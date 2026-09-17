@@ -7,5 +7,4 @@ environment:
 workspace:
   - flutterforge_backend_client
   - flutterforge_backend_server
-  - flutterforge_backend_flutter
 

@@ -13,6 +13,13 @@ apiServer:
   publicPort: 8081
   publicScheme: http
 
+# Database configuration.
+database:
+  host: localhost
+  port: 8090
+  name: flutterforge_backend
+  user: postgres
+
 # Configuration for the Insights server.
 insightsServer:
   port: 8081

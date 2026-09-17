@@ -1,0 +1,8 @@
+enum: UserPersonaType
+values:
+  - general
+  - business
+  - developer
+  - elderly
+  - children
+  - healthcare

@@ -1,0 +1,6 @@
+enum: MonetizationModel
+values:
+  - free
+  - freemium
+  - oneTimePurchase
+  - adSupported

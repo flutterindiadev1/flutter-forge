@@ -1,0 +1,6 @@
+enum: CiCdPlatform
+values:
+  - githubActions
+  - gitlabCi
+  - bitbucketPipelines
+  - none

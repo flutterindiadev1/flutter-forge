@@ -1,0 +1,20 @@
+class: IntegrationConfig
+fields:
+  firebaseAuth: bool
+  firebaseFirestore: bool
+  firebaseAnalytics: bool
+  firebaseCrashlytics: bool
+  firebaseMessaging: bool
+  firebaseRemoteConfig: bool
+  firebaseStorage: bool
+  stripe: bool
+  revenueCat: bool
+  googlePay: bool
+  googleMaps: bool
+  mapbox: bool
+  googleSignIn: bool
+  appleSignIn: bool
+  facebookAuth: bool
+  sentry: bool
+  datadog: bool
+  postHog: bool

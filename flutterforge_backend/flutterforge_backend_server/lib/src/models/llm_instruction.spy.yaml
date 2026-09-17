@@ -1,0 +1,5 @@
+class: LlmInstruction
+fields:
+  id: String
+  instruction: String
+  featureId: String?

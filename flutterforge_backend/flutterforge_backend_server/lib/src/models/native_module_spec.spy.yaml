@@ -1,0 +1,7 @@
+class: NativeModuleSpec
+fields:
+  id: String
+  moduleName: String
+  description: String
+  platforms: List<String>
+  featureId: String?

@@ -1,0 +1,7 @@
+enum: AppStyle
+values:
+  - minimal
+  - material3
+  - glassmorphism
+  - playful
+  - corporate

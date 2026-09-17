@@ -5,12 +5,14 @@ import '../../../features/wizard/models/feature_node.dart';
 
 class FeatureDependencyGraph extends StatefulWidget {
   final List<FeatureNode> nodes;
+  final String? selectedNodeId;
   final ValueChanged<String>? onNodeTap;
   final Function(String id, double x, double y)? onNodeDragged;
 
   const FeatureDependencyGraph({
     super.key,
     required this.nodes,
+    this.selectedNodeId,
     this.onNodeTap,
     this.onNodeDragged,
   });
@@ -89,7 +91,7 @@ class _FeatureDependencyGraphState extends State<FeatureDependencyGraph>
             // Edges
             AnimatedBuilder(
               animation: _pulseController,
-              builder: (_, __) => CustomPaint(
+              builder: (_, _) => CustomPaint(
                 size: Size(constraints.maxWidth, constraints.maxHeight),
                 painter: _EdgePainter(
                   nodes: widget.nodes,
@@ -105,6 +107,7 @@ class _FeatureDependencyGraphState extends State<FeatureDependencyGraph>
               return _DraggableNode(
                 node: node,
                 position: pos,
+                isSelected: widget.selectedNodeId == node.id,
                 onTap: () => widget.onNodeTap?.call(node.id),
                 onDragEnd: (newPos) => widget.onNodeDragged?.call(
                   node.id,
@@ -123,12 +126,14 @@ class _FeatureDependencyGraphState extends State<FeatureDependencyGraph>
 class _DraggableNode extends StatefulWidget {
   final FeatureNode node;
   final Offset position;
+  final bool isSelected;
   final VoidCallback onTap;
   final ValueChanged<Offset> onDragEnd;
 
   const _DraggableNode({
     required this.node,
     required this.position,
+    this.isSelected = false,
     required this.onTap,
     required this.onDragEnd,
   });
@@ -193,15 +198,15 @@ class _DraggableNodeState extends State<_DraggableNode> {
             color: AppColors.card,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _isDragging
-                  ? _layerColor
-                  : _layerColor.withOpacity(0.5),
-              width: _isDragging ? 2 : 1.5,
+              color: widget.isSelected 
+                  ? Colors.white 
+                  : (_isDragging ? _layerColor : _layerColor.withValues(alpha: 0.5)),
+              width: (widget.isSelected || _isDragging) ? 2.5 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: _layerColor.withOpacity(_isDragging ? 0.4 : 0.15),
-                blurRadius: _isDragging ? 20 : 8,
+                color: (widget.isSelected ? Colors.white : _layerColor).withValues(alpha: _isDragging || widget.isSelected ? 0.4 : 0.15),
+                blurRadius: _isDragging || widget.isSelected ? 20 : 8,
               ),
             ],
           ),
@@ -224,7 +229,7 @@ class _DraggableNodeState extends State<_DraggableNode> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: _layerColor.withOpacity(0.15),
+                    color: _layerColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -258,8 +263,6 @@ class _EdgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final nodeMap = {for (final n in nodes) n.id: n};
-
     for (final node in nodes) {
       for (final depId in node.dependencyIds) {
         final from = positions[node.id];
@@ -268,7 +271,7 @@ class _EdgePainter extends CustomPainter {
 
         // Draw arrow line
         final paint = Paint()
-          ..color = AppColors.primary.withOpacity(0.5 + animationValue * 0.3)
+          ..color = AppColors.primary.withValues(alpha: 0.5 + animationValue * 0.3)
           ..strokeWidth = 1.5
           ..style = PaintingStyle.stroke;
 
@@ -308,7 +311,7 @@ class _EdgePainter extends CustomPainter {
     );
 
     final arrowPaint = Paint()
-      ..color = AppColors.primary.withOpacity(0.7)
+      ..color = AppColors.primary.withValues(alpha: 0.7)
       ..style = PaintingStyle.fill;
 
     final path = Path()

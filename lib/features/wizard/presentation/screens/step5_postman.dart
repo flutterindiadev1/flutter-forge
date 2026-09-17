@@ -10,14 +10,14 @@ import '../cubit/wizard_state.dart';
 import 'wizard_widgets.dart';
 
 
-class Step2Postman extends StatefulWidget {
-  const Step2Postman({super.key});
+class Step5Postman extends StatefulWidget {
+  const Step5Postman({super.key});
 
   @override
-  State<Step2Postman> createState() => _Step2PostmanState();
+  State<Step5Postman> createState() => _Step5PostmanState();
 }
 
-class _Step2PostmanState extends State<Step2Postman> {
+class _Step5PostmanState extends State<Step5Postman> {
   bool _isDragOver = false;
 
   Future<void> _pickFile() async {
@@ -52,7 +52,7 @@ class _Step2PostmanState extends State<Step2Postman> {
                 children: [
                   WizardSectionHeader(
                     icon: Icons.api_outlined,
-                    title: 'Postman Collection',
+                    title: 'Postman Collection (Optional)',
                     subtitle:
                         'Upload your Postman JSON to auto-generate Dart DTOs and Dio clients.',
                   ),
@@ -61,18 +61,80 @@ class _Step2PostmanState extends State<Step2Postman> {
                     _buildUploadZone(),
                     const Gap(24),
                     _buildDemoHint(),
+                    const Gap(32),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => context.read<WizardCubit>().nextStep(),
+                        icon: const Icon(Icons.skip_next),
+                        label: const Text('Skip this step'),
+                      ),
+                    ),
                   ] else ...[
                     _buildCollectionPreview(collection, context),
                   ],
+                  const Gap(32),
+                  // GitHub Token Status
+                  const Divider(color: AppColors.border),
+                  const Gap(24),
+                  if (state.githubTokenSaved || (state.config.githubToken != null && state.config.githubToken!.isNotEmpty))
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green),
+                          const Gap(12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('GitHub Connected', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, color: Colors.green)),
+                                const Gap(4),
+                                Text('Your GitHub token is present. The project will be pushed to your repository.', style: AppTextStyles.bodySmall.copyWith(color: Colors.green)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                          const Gap(12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('GitHub Token Missing', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, color: AppColors.error)),
+                                const Gap(4),
+                                Text('Please go back to Step 1 and provide a GitHub Personal Access Token to generate the project.', style: AppTextStyles.bodySmall.copyWith(color: AppColors.error)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (state.errorMessage != null) ...[
                     const Gap(16),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.1),
+                        color: AppColors.error.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: AppColors.error.withOpacity(0.3)),
+                            color: AppColors.error.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
@@ -110,8 +172,8 @@ class _Step2PostmanState extends State<Step2Postman> {
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: _isDragOver
-                ? AppColors.primary.withOpacity(0.06)
-                : AppColors.surfaceElevated.withOpacity(0.5),
+                ? AppColors.primary.withValues(alpha: 0.06)
+                : AppColors.surfaceElevated.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(16),
           ),
           child: DottedBorder(
@@ -134,7 +196,7 @@ class _Step2PostmanState extends State<Step2Postman> {
                     height: 56,
                     decoration: BoxDecoration(
                       color: _isDragOver
-                          ? AppColors.primary.withOpacity(0.15)
+                          ? AppColors.primary.withValues(alpha: 0.15)
                           : AppColors.surface,
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -187,9 +249,9 @@ class _Step2PostmanState extends State<Step2Postman> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.info.withOpacity(0.08),
+        color: AppColors.info.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withOpacity(0.2)),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -216,9 +278,9 @@ class _Step2PostmanState extends State<Step2Postman> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.08),
+            color: AppColors.success.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.success.withOpacity(0.25)),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
@@ -366,9 +428,9 @@ class _EndpointRow extends StatelessWidget {
             width: 52,
             height: 22,
             decoration: BoxDecoration(
-              color: _methodColor.withOpacity(0.12),
+              color: _methodColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: _methodColor.withOpacity(0.3)),
+              border: Border.all(color: _methodColor.withValues(alpha: 0.3)),
             ),
             child: Center(
               child: Text(
@@ -397,7 +459,7 @@ class _EndpointRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.1),
+                      color: AppColors.accent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

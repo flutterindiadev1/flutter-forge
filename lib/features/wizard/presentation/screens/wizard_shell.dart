@@ -5,31 +5,32 @@ import 'package:gap/gap.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/step_indicator.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../models/project_config.dart';
 import '../cubit/wizard_cubit.dart';
 import '../cubit/wizard_state.dart';
 import 'step1_identity.dart';
-import 'step2_postman.dart';
-import 'step3_figma.dart';
+import 'step2_features.dart';
+import 'step3_design.dart';
 import 'step4_architecture.dart';
-import 'step5_features.dart';
+import 'step5_postman.dart';
 
 class WizardShell extends StatelessWidget {
   const WizardShell({super.key});
 
   static const _stepLabels = [
     'Project Identity',
-    'Postman Collection',
-    'Figma Design',
+    'App Features',
+    'Design & Assets',
     'Architecture',
-    'Feature Graph',
+    'API (Optional)',
   ];
 
   static const _stepDescriptions = [
     'Name and describe your project',
-    'Upload your API collection',
-    'Link your design file',
+    'Define features and requirements',
+    'Upload assets and choose design',
     'Choose your tech stack',
-    'Map features & dependencies',
+    'Upload Postman collection',
   ];
 
   @override
@@ -156,10 +157,10 @@ class WizardShell extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: AppColors.primary.withOpacity(0.2)),
+                    color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,6 +200,12 @@ class WizardShell extends StatelessWidget {
       child: Row(
         children: [
           Text(_stepLabels[state.stepIndex], style: AppTextStyles.h3),
+          if (state.currentStep != WizardStep.identity &&
+              state.aiAnalysisStatus != AiAnalysisStatus.idle)
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: _buildAiStatusChip(state.aiAnalysisStatus),
+            ),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.close, color: AppColors.textSecondary),
@@ -209,18 +216,80 @@ class WizardShell extends StatelessWidget {
     );
   }
 
+  Widget _buildAiStatusChip(AiAnalysisStatus status) {
+    switch (status) {
+      case AiAnalysisStatus.running:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const Gap(8),
+              Text('AI Analyzing...', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
+            ],
+          ),
+        );
+      case AiAnalysisStatus.done:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 14),
+              const Gap(6),
+              Text('AI Optimized', style: AppTextStyles.label.copyWith(color: Colors.green)),
+            ],
+          ),
+        );
+      case AiAnalysisStatus.failed:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 14),
+              const Gap(6),
+              Text('AI Analysis Failed', style: AppTextStyles.label.copyWith(color: AppColors.error)),
+            ],
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   Widget _buildCurrentStep(BuildContext context, WizardState state) {
     switch (state.currentStep) {
       case WizardStep.identity:
         return const Step1Identity(key: ValueKey('step1'));
-      case WizardStep.postman:
-        return const Step2Postman(key: ValueKey('step2'));
-      case WizardStep.figma:
-        return const Step3Figma(key: ValueKey('step3'));
+      case WizardStep.features:
+        return const Step2Features(key: ValueKey('step2'));
+      case WizardStep.design:
+        return const Step3Design(key: ValueKey('step3'));
       case WizardStep.architecture:
         return const Step4Architecture(key: ValueKey('step4'));
-      case WizardStep.features:
-        return const Step5Features(key: ValueKey('step5'));
+      case WizardStep.postman:
+        return const Step5Postman(key: ValueKey('step5'));
     }
   }
 
@@ -255,9 +324,9 @@ class WizardShell extends StatelessWidget {
               isLoading: state.isSubmitting,
               trailingIcon: Icons.rocket_launch,
               onPressed: () async {
-                await cubit.submitProject();
-                if (context.mounted) {
-                  context.go('/pipeline/${state.config.projectId}');
+                final success = await cubit.submitProject();
+                if (success && context.mounted) {
+                  context.go('/pipeline/${cubit.state.config.projectId}');
                 }
               },
             )

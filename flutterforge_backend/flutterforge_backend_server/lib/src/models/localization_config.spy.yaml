@@ -1,0 +1,4 @@
+class: LocalizationConfig
+fields:
+  targetLanguages: List<String>
+  defaultLanguage: String

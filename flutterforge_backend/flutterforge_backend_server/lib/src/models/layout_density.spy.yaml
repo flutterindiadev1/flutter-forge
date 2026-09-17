@@ -1,0 +1,5 @@
+enum: LayoutDensity
+values:
+  - comfortable
+  - compact
+  - spacious

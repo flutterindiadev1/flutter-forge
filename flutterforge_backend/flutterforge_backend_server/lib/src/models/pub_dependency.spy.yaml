@@ -1,0 +1,7 @@
+class: PubDependency
+fields:
+  id: String
+  packageName: String
+  pubDevUrl: String
+  version: String?
+  featureId: String?

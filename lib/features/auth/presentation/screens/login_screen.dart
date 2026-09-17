@@ -19,16 +19,19 @@ class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _codeController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _isLoginMode = true;
   late AnimationController _bgController;
 
   @override
   void initState() {
     super.initState();
+    context.read<AuthCubit>().checkAuth();
     _bgController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 12),
+      duration: const Duration(seconds: 20),
     )..repeat();
   }
 
@@ -36,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _codeController.dispose();
     _bgController.dispose();
     super.dispose();
   }
@@ -81,7 +85,11 @@ class _LoginScreenState extends State<LoginScreen>
                       FadeInUp(
                         duration: const Duration(milliseconds: 600),
                         delay: const Duration(milliseconds: 200),
-                        child: _buildCard(context),
+                        child: BlocBuilder<AuthCubit, AuthState>(
+                          builder: (context, state) {
+                            return _buildCard(context, state);
+                          },
+                        ),
                       ),
                       const Gap(24),
                       FadeInUp(
@@ -115,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.4),
+                color: AppColors.primary.withValues(alpha: 0.4),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -135,15 +143,15 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildCard(BuildContext context) {
+  Widget _buildCard(BuildContext context, AuthState state) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.card.withOpacity(0.85),
+        color: AppColors.card.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             blurRadius: 40,
             offset: const Offset(0, 16),
           ),
@@ -158,108 +166,158 @@ class _LoginScreenState extends State<LoginScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Welcome back', style: AppTextStyles.h2),
-                const Gap(6),
-                Text(
-                  'Sign in to access your projects',
-                  style: AppTextStyles.body,
-                ),
-                const Gap(32),
-                _buildLabel('Email Address'),
-                const Gap(8),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.textPrimary),
-                  decoration: const InputDecoration(
-                    hintText: 'you@company.com',
-                    prefixIcon: Icon(Icons.mail_outline, color: AppColors.textMuted),
+                if (state is AuthEmailVerificationNeeded) ...[
+                  Text('Check your email', style: AppTextStyles.h2),
+                  const Gap(6),
+                  Text(
+                    'Enter the 8-digit code sent to ${state.email}',
+                    style: AppTextStyles.body,
                   ),
-                ),
-                const Gap(20),
-                _buildLabel('Password'),
-                const Gap(8),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: '••••••••',
-                    prefixIcon: const Icon(Icons.lock_outline,
-                        color: AppColors.textMuted),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: AppColors.textMuted,
-                        size: 20,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                  const Gap(32),
+                  _buildLabel('Verification Code'),
+                  const Gap(8),
+                  TextFormField(
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: '12345678',
+                      prefixIcon: Icon(Icons.pin_outlined, color: AppColors.textMuted),
                     ),
                   ),
-                ),
-                const Gap(32),
-                BlocBuilder<AuthCubit, AuthState>(
-                  builder: (context, state) {
-                    final isLoading = state is AuthLoading;
-                    return SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _handleSignIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
+                  const Gap(32),
+                  _buildSubmitButton(
+                    context: context,
+                    isLoading: state is AuthLoading,
+                    text: 'Verify Account',
+                    onPressed: () {
+                      context.read<AuthCubit>().verifySignUp(_codeController.text.trim());
+                    },
+                  ),
+                  const Gap(20),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        // Reset state by checking auth (will clear verification state)
+                        context.read<AuthCubit>().checkAuth();
+                      },
+                      child: Text('Cancel', style: AppTextStyles.label.copyWith(color: AppColors.primary)),
+                    ),
+                  )
+                ] else ...[
+                  Text(_isLoginMode ? 'Welcome back' : 'Create Account', style: AppTextStyles.h2),
+                  const Gap(6),
+                  Text(
+                    _isLoginMode ? 'Sign in to access your projects' : 'Sign up to get started',
+                    style: AppTextStyles.body,
+                  ),
+                  const Gap(32),
+                  _buildLabel('Email Address'),
+                  const Gap(8),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+                    decoration: const InputDecoration(
+                      hintText: 'you@company.com',
+                      prefixIcon: Icon(Icons.mail_outline, color: AppColors.textMuted),
+                    ),
+                  ),
+                  const Gap(20),
+                  _buildLabel('Password'),
+                  const Gap(8),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: '••••••••',
+                      prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppColors.textMuted,
+                          size: 20,
                         ),
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Sign In',
-                                    style: AppTextStyles.label.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const Gap(8),
-                                  const Icon(Icons.arrow_forward,
-                                      size: 18, color: Colors.white),
-                                ],
-                              ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
-                    );
-                  },
-                ),
-                const Gap(20),
-                Center(
-                  child: Text(
-                    'Demo: use any email + password (6+ chars)',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primary.withOpacity(0.7),
                     ),
                   ),
-                ),
+                  const Gap(32),
+                  _buildSubmitButton(
+                    context: context,
+                    isLoading: state is AuthLoading,
+                    text: _isLoginMode ? 'Sign In' : 'Sign Up',
+                    onPressed: _handleAuth,
+                  ),
+                  const Gap(20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _isLoginMode ? "Don't have an account?" : "Already have an account?",
+                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
+                        child: Text(
+                          _isLoginMode ? 'Sign Up' : 'Sign In',
+                          style: AppTextStyles.label.copyWith(color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton({
+    required BuildContext context,
+    required bool isLoading,
+    required String text,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    text,
+                    style: AppTextStyles.label.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Gap(8),
+                  const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                ],
+              ),
       ),
     );
   }
@@ -271,11 +329,18 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _handleSignIn() {
-    context.read<AuthCubit>().signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+  void _handleAuth() {
+    if (_isLoginMode) {
+      context.read<AuthCubit>().signIn(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+    } else {
+      context.read<AuthCubit>().signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+    }
   }
 }
 
@@ -287,7 +352,7 @@ class _AnimatedBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
-      builder: (_, __) {
+      builder: (_, _) {
         return CustomPaint(
           size: MediaQuery.of(context).size,
           painter: _GridPainter(progress: controller.value),
@@ -313,7 +378,7 @@ class _GridPainter extends CustomPainter {
 
     // Subtle grid lines
     final gridPaint = Paint()
-      ..color = const Color(0xFF1E2D45).withOpacity(0.4)
+      ..color = const Color(0xFF1E2D45).withValues(alpha: 0.4)
       ..strokeWidth = 1;
     const step = 60.0;
     for (double x = 0; x < size.width; x += step) {
@@ -331,7 +396,7 @@ class _GridPainter extends CustomPainter {
         math.cos(progress * 2 * math.pi) * size.height * 0.06;
     orbPaint.shader = RadialGradient(
       colors: [
-        const Color(0xFF6366F1).withOpacity(0.15),
+        const Color(0xFF6366F1).withValues(alpha: 0.15),
         Colors.transparent,
       ],
     ).createShader(Rect.fromCircle(
@@ -345,7 +410,7 @@ class _GridPainter extends CustomPainter {
         math.sin(progress * 2 * math.pi) * size.height * 0.05;
     orbPaint.shader = RadialGradient(
       colors: [
-        const Color(0xFF8B5CF6).withOpacity(0.12),
+        const Color(0xFF8B5CF6).withValues(alpha: 0.12),
         Colors.transparent,
       ],
     ).createShader(Rect.fromCircle(

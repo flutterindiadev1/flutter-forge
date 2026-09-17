@@ -1,0 +1,7 @@
+class: CiCdConfig
+fields:
+  platform: CiCdPlatform
+  runTestsOnPr: bool
+  deployToFirebaseAppDistribution: bool
+  deployToStores: bool
+  notifySlack: bool

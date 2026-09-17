@@ -113,7 +113,7 @@ class _StepCircle extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: isCurrent ? AppColors.primaryGradient : null,
         color: isDone
-            ? AppColors.primary.withOpacity(0.2)
+            ? AppColors.primary.withValues(alpha: 0.2)
             : isCurrent
                 ? null
                 : AppColors.surfaceElevated,
@@ -121,14 +121,14 @@ class _StepCircle extends StatelessWidget {
           color: isCurrent
               ? AppColors.primary
               : isDone
-                  ? AppColors.primary.withOpacity(0.5)
+                  ? AppColors.primary.withValues(alpha: 0.5)
                   : AppColors.border,
           width: 1.5,
         ),
         boxShadow: isCurrent
             ? [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
+                  color: AppColors.primary.withValues(alpha: 0.4),
                   blurRadius: 12,
                   spreadRadius: 2,
                 )

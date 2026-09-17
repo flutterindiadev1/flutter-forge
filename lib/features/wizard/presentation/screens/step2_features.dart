@@ -7,16 +7,17 @@ import '../../../../shared/widgets/feature_dependency_graph.dart';
 import '../cubit/wizard_cubit.dart';
 import '../cubit/wizard_state.dart';
 import 'wizard_widgets.dart';
+import 'package:uuid/uuid.dart';
+import '../../models/project_config.dart';
 
-
-class Step5Features extends StatefulWidget {
-  const Step5Features({super.key});
+class Step2Features extends StatefulWidget {
+  const Step2Features({super.key});
 
   @override
-  State<Step5Features> createState() => _Step5FeaturesState();
+  State<Step2Features> createState() => _Step2FeaturesState();
 }
 
-class _Step5FeaturesState extends State<Step5Features>
+class _Step2FeaturesState extends State<Step2Features>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _selectedFeatureId;
@@ -47,7 +48,6 @@ class _Step5FeaturesState extends State<Step5Features>
                 children: [
                   const Expanded(
                     child: WizardSectionHeader(
-
                       icon: Icons.account_tree_outlined,
                       title: 'Feature Graph',
                       subtitle:
@@ -76,10 +76,10 @@ class _Step5FeaturesState extends State<Step5Features>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.1),
+                    color: AppColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: AppColors.warning.withOpacity(0.3)),
+                        color: AppColors.warning.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -97,6 +97,39 @@ class _Step5FeaturesState extends State<Step5Features>
                   ),
                 ),
               ),
+            // AI Analysis error warning
+            if (state.aiAnalysisStatus == AiAnalysisStatus.failed && state.aiAnalysisError != null)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline,
+                          color: AppColors.error, size: 18),
+                      const Gap(10),
+                      Expanded(
+                        child: Text(
+                          state.aiAnalysisError!.replaceAll('Exception: ', ''),
+                          style: AppTextStyles.body.copyWith(
+                              color: AppColors.error),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.read<WizardCubit>().retryAnalysis(),
+                        child: const Text('Retry', style: TextStyle(color: AppColors.error)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             // Tab bar
             Padding(
               padding: const EdgeInsets.fromLTRB(40, 20, 40, 0),
@@ -107,12 +140,13 @@ class _Step5FeaturesState extends State<Step5Features>
                 ),
                 child: TabBar(
                   controller: _tabController,
+                  indicatorSize: TabBarIndicatorSize.tab,
                   indicatorColor: Colors.transparent,
                   dividerColor: Colors.transparent,
                   indicator: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   labelColor: AppColors.primary,
                   unselectedLabelColor: AppColors.textMuted,
@@ -140,20 +174,48 @@ class _Step5FeaturesState extends State<Step5Features>
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: FeatureDependencyGraph(
-                        nodes: state.config.features,
-                        onNodeTap: (id) =>
-                            setState(() => _selectedFeatureId = id),
-                        onNodeDragged: (id, x, y) =>
-                            context.read<WizardCubit>().updateFeaturePosition(id, x, y),
-                      ),
+                      child: state.aiAnalysisStatus == AiAnalysisStatus.running
+                          ? const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(color: AppColors.primary),
+                                  Gap(16),
+                                  Text('AI is analyzing your requirements...',
+                                      style: TextStyle(color: AppColors.textMuted)),
+                                ],
+                              ),
+                            )
+                          : FeatureDependencyGraph(
+                              nodes: state.config.features,
+                              selectedNodeId: _selectedFeatureId,
+                              onNodeTap: (id) =>
+                                  setState(() => _selectedFeatureId = id),
+                              onNodeDragged: (id, x, y) =>
+                                  context.read<WizardCubit>().updateFeaturePosition(id, x, y),
+                            ),
                     ),
                   ),
                   // List view
                   ListView(
                     padding: const EdgeInsets.fromLTRB(40, 0, 40, 20),
                     children: [
-                      if (state.config.features.isEmpty)
+                      if (state.aiAnalysisStatus == AiAnalysisStatus.running)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 60),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(color: AppColors.primary),
+                                Gap(16),
+                                Text('AI is generating your features...',
+                                    style: TextStyle(color: AppColors.textMuted)),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (state.config.features.isEmpty)
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.only(top: 60),
@@ -185,6 +247,7 @@ class _Step5FeaturesState extends State<Step5Features>
                                   .read<WizardCubit>()
                                   .removeFeature(feature.id),
                             )),
+                      const Gap(40),
                     ],
                   ),
                 ],
@@ -248,6 +311,38 @@ class _Step5FeaturesState extends State<Step5Features>
                   ),
                 ),
                 const Gap(16),
+                Text('Description',
+                    style: AppTextStyles.label.copyWith(
+                        color: AppColors.textSecondary)),
+                const Gap(8),
+                TextField(
+                  controller: descCtrl,
+                  style: AppTextStyles.body.copyWith(
+                      color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Brief description of the feature',
+                    hintStyle: AppTextStyles.body.copyWith(
+                        color: AppColors.textMuted),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                          color: AppColors.primary, width: 1.5),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceElevated,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                  ),
+                ),
+                const Gap(16),
                 Text('Layer',
                     style: AppTextStyles.label.copyWith(
                         color: AppColors.textSecondary)),
@@ -264,7 +359,7 @@ class _Step5FeaturesState extends State<Step5Features>
                             horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
                           color: selected
-                              ? AppColors.primary.withOpacity(0.15)
+                              ? AppColors.primary.withValues(alpha: 0.15)
                               : AppColors.surfaceElevated,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
@@ -303,6 +398,7 @@ class _Step5FeaturesState extends State<Step5Features>
                   context.read<WizardCubit>().addFeature(
                         FeatureNode.create(
                           name: nameCtrl.text.trim(),
+                          description: descCtrl.text.trim(),
                           layer: layer,
                         ),
                       );
@@ -443,7 +539,7 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: selected
-                                ? AppColors.primary.withOpacity(0.15)
+                                ? AppColors.primary.withValues(alpha: 0.15)
                                 : AppColors.surfaceElevated,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
@@ -478,7 +574,252 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                 ],
               ),
             ),
+            const Gap(16),
+            const Divider(height: 1),
+            _buildCustomRequirementsSection(context, widget.feature),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomRequirementsSection(BuildContext context, FeatureNode feature) {
+    final state = context.watch<WizardCubit>().state;
+    final painters = state.config.customPainters.where((p) => p.featureId == feature.id).toList();
+    final modules = state.config.nativeModules.where((m) => m.featureId == feature.id).toList();
+    final deps = state.config.dependencies.where((d) => d.featureId == feature.id).toList();
+    final instrs = state.config.llmInstructions.where((i) => i.featureId == feature.id).toList();
+
+    final hasAny = painters.isNotEmpty || modules.isNotEmpty || deps.isNotEmpty || instrs.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Custom Requirements', style: AppTextStyles.label.copyWith(color: AppColors.textPrimary)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _showAddRequirementDialog(context, feature.id),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Requirement'),
+              ),
+            ],
+          ),
+          if (hasAny) const Gap(12),
+          if (painters.isNotEmpty)
+            ...painters.map((p) => _RequirementTile(
+              icon: Icons.brush,
+              title: 'Custom Painter: ${p.name}',
+              subtitle: p.description,
+              onDelete: () => context.read<WizardCubit>().removeCustomPainter(p.id),
+            )),
+          if (modules.isNotEmpty)
+            ...modules.map((m) => _RequirementTile(
+              icon: Icons.memory,
+              title: 'Native Module: ${m.moduleName}',
+              subtitle: '${m.platforms.join(", ")} - ${m.description}',
+              onDelete: () => context.read<WizardCubit>().removeNativeModule(m.id),
+            )),
+          if (deps.isNotEmpty)
+            ...deps.map((d) => _RequirementTile(
+              icon: Icons.extension,
+              title: 'Dependency: ${d.packageName}',
+              subtitle: 'Version: ${d.version}',
+              onDelete: () => context.read<WizardCubit>().removeDependency(d.id),
+            )),
+          if (instrs.isNotEmpty)
+            ...instrs.map((i) => _RequirementTile(
+              icon: Icons.psychology,
+              title: 'Instruction',
+              subtitle: i.instruction,
+              onDelete: () => context.read<WizardCubit>().removeLlmInstruction(i.id),
+            )),
+          if (!hasAny)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('No specific requirements for this feature.', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddRequirementDialog(BuildContext context, String featureId) {
+    String type = 'Dependency';
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController(); // Or instruction
+    String platform = 'iOS';
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Add Requirement', style: AppTextStyles.h3),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  dropdownColor: AppColors.surfaceElevated,
+                  decoration: InputDecoration(
+                    labelText: 'Type',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  items: ['Dependency', 'Custom Painter', 'Native Module', 'LLM Instruction']
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => type = val);
+                    }
+                  },
+                ),
+                const Gap(16),
+                if (type != 'LLM Instruction')
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      labelText: type == 'Dependency' ? 'Package Name / Pub.dev URL' : 'Name',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                if (type != 'LLM Instruction') const Gap(16),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: type == 'LLM Instruction' ? 4 : 2,
+                  decoration: InputDecoration(
+                    labelText: type == 'Dependency' ? 'Version (optional)' : (type == 'LLM Instruction' ? 'Instruction prompt' : 'Description'),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                if (type == 'Native Module') ...[
+                  const Gap(16),
+                  DropdownButtonFormField<String>(
+                    initialValue: platform,
+                    dropdownColor: AppColors.surfaceElevated,
+                    decoration: InputDecoration(
+                      labelText: 'Platform',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: ['iOS', 'Android', 'macOS', 'Windows', 'Linux']
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => platform = val);
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final cubit = context.read<WizardCubit>();
+                if (type == 'Dependency') {
+                  final input = nameCtrl.text.trim();
+                  if (input.startsWith('http')) {
+                    final resolved = await cubit.resolvePubDevUrl(input);
+                    if (resolved != null) {
+                      cubit.addDependency(resolved.copyWith(featureId: featureId));
+                    }
+                  } else {
+                    cubit.addDependency(PubDependency(
+                      id: const Uuid().v4(),
+                      packageName: input,
+                      pubDevUrl: 'https://pub.dev/packages/$input',
+                      version: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'any',
+                      featureId: featureId,
+                    ));
+                  }
+                } else if (type == 'Custom Painter') {
+                  cubit.addCustomPainter(CustomPainterSpec(
+                    id: const Uuid().v4(),
+                    name: nameCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                    featureId: featureId,
+                  ));
+                } else if (type == 'Native Module') {
+                  cubit.addNativeModule(NativeModuleSpec(
+                    id: const Uuid().v4(),
+                    moduleName: nameCtrl.text.trim(),
+                    platforms: [platform],
+                    description: descCtrl.text.trim(),
+                    featureId: featureId,
+                  ));
+                } else if (type == 'LLM Instruction') {
+                  cubit.addLlmInstruction(LlmInstruction(
+                    id: const Uuid().v4(),
+                    instruction: descCtrl.text.trim(),
+                    featureId: featureId,
+                  ));
+                }
+                if (context.mounted) Navigator.pop(dialogCtx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Add', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RequirementTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onDelete;
+
+  const _RequirementTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.accent),
+          const Gap(12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.label.copyWith(color: AppColors.textPrimary)),
+                const Gap(2),
+                Text(subtitle, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            onPressed: onDelete,
+            visualDensity: VisualDensity.compact,
+          ),
         ],
       ),
     );

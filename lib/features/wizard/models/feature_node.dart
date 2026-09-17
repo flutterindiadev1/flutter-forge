@@ -77,7 +77,7 @@ class DependencyGraphValidator {
 
     void dfs(String id, List<String> path) {
       if (inStack.contains(id)) {
-        cycles.add(path.join(' → ') + ' → $id');
+        cycles.add('${path.join(' → ')} → $id');
         return;
       }
       if (visited.contains(id)) return;

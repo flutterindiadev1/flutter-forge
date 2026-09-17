@@ -1,0 +1,16 @@
+class: ProjectRecord
+table: project_records
+fields:
+  projectId: String
+  userId: String?
+  configJson: String
+  status: String
+  repoUrl: String?
+  githubUsername: String?
+  iterationHistory: String?
+  createdAt: DateTime
+  updatedAt: DateTime?
+indexes:
+  project_id_idx:
+    fields: projectId
+    unique: true

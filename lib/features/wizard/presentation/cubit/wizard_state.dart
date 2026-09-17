@@ -1,9 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../models/project_config.dart';
-import '../../models/feature_node.dart';
 
-
-enum WizardStep { identity, postman, figma, architecture, features }
+enum AiAnalysisStatus { idle, running, done, failed }
 
 class WizardState extends Equatable {
   final WizardStep currentStep;
@@ -11,6 +9,10 @@ class WizardState extends Equatable {
   final bool isSubmitting;
   final String? errorMessage;
   final List<String> cyclicDependencyWarnings;
+  final AiAnalysisStatus aiAnalysisStatus;
+  final String? aiAnalysisError;
+  final bool apiKeySaved;
+  final bool githubTokenSaved;
 
   const WizardState({
     this.currentStep = WizardStep.identity,
@@ -18,6 +20,10 @@ class WizardState extends Equatable {
     this.isSubmitting = false,
     this.errorMessage,
     this.cyclicDependencyWarnings = const [],
+    this.aiAnalysisStatus = AiAnalysisStatus.idle,
+    this.aiAnalysisError,
+    this.apiKeySaved = false,
+    this.githubTokenSaved = false,
   });
 
   int get stepIndex => WizardStep.values.indexOf(currentStep);
@@ -30,6 +36,10 @@ class WizardState extends Equatable {
     bool? isSubmitting,
     String? errorMessage,
     List<String>? cyclicDependencyWarnings,
+    AiAnalysisStatus? aiAnalysisStatus,
+    String? aiAnalysisError,
+    bool? apiKeySaved,
+    bool? githubTokenSaved,
     bool clearError = false,
   }) {
     return WizardState(
@@ -39,6 +49,10 @@ class WizardState extends Equatable {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       cyclicDependencyWarnings:
           cyclicDependencyWarnings ?? this.cyclicDependencyWarnings,
+      aiAnalysisStatus: aiAnalysisStatus ?? this.aiAnalysisStatus,
+      aiAnalysisError: clearError ? null : (aiAnalysisError ?? this.aiAnalysisError),
+      apiKeySaved: apiKeySaved ?? this.apiKeySaved,
+      githubTokenSaved: githubTokenSaved ?? this.githubTokenSaved,
     );
   }
 
@@ -49,5 +63,9 @@ class WizardState extends Equatable {
         isSubmitting,
         errorMessage,
         cyclicDependencyWarnings,
+        aiAnalysisStatus,
+        aiAnalysisError,
+        apiKeySaved,
+        githubTokenSaved,
       ];
 }

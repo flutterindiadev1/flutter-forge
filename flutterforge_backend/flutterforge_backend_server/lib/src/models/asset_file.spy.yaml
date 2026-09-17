@@ -1,0 +1,7 @@
+class: AssetFile
+fields:
+  id: String
+  name: String
+  type: String
+  url: String
+  sizeBytes: int

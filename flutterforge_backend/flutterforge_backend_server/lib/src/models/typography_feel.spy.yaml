@@ -1,0 +1,5 @@
+enum: TypographyFeel
+values:
+  - modern
+  - classic
+  - rounded

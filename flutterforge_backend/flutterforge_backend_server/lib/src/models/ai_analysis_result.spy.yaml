@@ -1,0 +1,4 @@
+class: AiAnalysisResult
+fields:
+  questions: List<String>
+  features: List<FeatureNode>

@@ -9,6 +9,7 @@ export '../../models/pipeline_event.dart';
 class PipelineCubit extends Cubit<PipelineState> {
   final String projectId;
   StreamSubscription? _subscription;
+  final StreamController<sp.PipelineCommand> _commandStreamController = StreamController<sp.PipelineCommand>.broadcast();
 
   PipelineCubit({required this.projectId})
       : super(const PipelineState()) {
@@ -17,38 +18,37 @@ class PipelineCubit extends Cubit<PipelineState> {
 
   Future<void> _startPipeline() async {
     try {
-      await client.openStreamingConnection();
+      final responseStream = client.pipeline.startPipeline(_commandStreamController.stream);
 
-      _subscription = client.pipeline.stream.listen((message) {
-        if (message is sp.PipelineStateMessage) {
-          final newPhase = PipelinePhase.values.firstWhere(
-            (e) => e.name == message.phase.name,
-            orElse: () => PipelinePhase.parsing,
-          );
+      _subscription = responseStream.listen((message) {
+        final newPhase = PipelinePhase.values.firstWhere(
+          (e) => e.name == message.phase.name,
+          orElse: () => PipelinePhase.parsing,
+        );
 
-          final newLogs = message.logs.map((e) => PipelineEvent(
-            message: e.message,
-            level: e.level,
-            timestamp: e.timestamp,
-          )).toList();
+        final newLogs = message.logs.map((e) => PipelineEvent(
+          message: e.message,
+          level: e.level,
+          timestamp: e.timestamp,
+        )).toList();
 
-          emit(state.copyWith(
-            phase: newPhase,
-            phaseProgress: message.phaseProgress,
-            logs: newLogs,
-            isAwaitingElicitation: message.isAwaitingElicitation,
-            currentElicitationQuestion: message.currentElicitationQuestion,
-            elicitationContext: message.elicitationContext,
-            elicitationOptions: message.elicitationOptions,
-            generatedPayloadPreview: message.generatedPayloadPreview,
-            isComplete: message.isComplete,
-            clearElicitation: !message.isAwaitingElicitation,
-          ));
-        }
+        emit(state.copyWith(
+          phase: newPhase,
+          phaseProgress: message.phaseProgress,
+          logs: newLogs,
+          isAwaitingElicitation: message.isAwaitingElicitation,
+          currentElicitationQuestion: message.currentElicitationQuestion,
+          elicitationContext: message.elicitationContext,
+          elicitationOptions: message.elicitationOptions,
+          generatedPayloadPreview: message.generatedPayloadPreview,
+          isComplete: message.isComplete,
+          clearElicitation: !message.isAwaitingElicitation,
+        ));
       });
 
-      // Send the start signal with projectId
-      client.pipeline.sendStreamMessage(sp.PipelineCommand(command: projectId));
+      // Wait for the websocket connection to establish before sending the first command
+      await Future.delayed(const Duration(milliseconds: 500));
+      _commandStreamController.add(sp.PipelineCommand(command: projectId));
       
     } catch (e) {
       _log('Error connecting to Serverpod: $e', level: 'error');
@@ -70,7 +70,7 @@ class PipelineCubit extends Cubit<PipelineState> {
       isAwaitingElicitation: false,
     ));
     _log('User selected: $answer', level: 'info');
-    client.pipeline.sendStreamMessage(sp.PipelineCommand(command: answer));
+    _commandStreamController.add(sp.PipelineCommand(command: answer));
   }
   
   // Backward compatibility for existing UI calls
@@ -85,7 +85,7 @@ class PipelineCubit extends Cubit<PipelineState> {
   @override
   Future<void> close() {
     _subscription?.cancel();
-    client.closeStreamingConnection();
+    _commandStreamController.close();
     return super.close();
   }
 }

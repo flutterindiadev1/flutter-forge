@@ -5,13 +5,22 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/network/api_client.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../../models/project_summary.dart';
+import '../widgets/template_selection_dialog.dart';
 
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +43,10 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildSidebar(BuildContext context) {
-    return Container(
-      width: 220,
+    return Material(
       color: AppColors.surface,
+      child: SizedBox(
+        width: 220,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -62,9 +72,23 @@ class DashboardScreen extends StatelessWidget {
           ),
           const Divider(height: 1),
           const Gap(12),
-          _NavItem(icon: Icons.grid_view, label: 'Projects', selected: true),
-          _NavItem(icon: Icons.settings_outlined, label: 'Settings'),
-          _NavItem(icon: Icons.help_outline, label: 'Docs'),
+          _NavItem(
+            icon: Icons.grid_view, 
+            label: 'Projects', 
+            selected: _selectedIndex == 0,
+            onTap: () => setState(() => _selectedIndex = 0),
+          ),
+          _NavItem(
+            icon: Icons.settings_outlined, 
+            label: 'Settings', 
+            selected: _selectedIndex == 1,
+            onTap: () => setState(() => _selectedIndex = 1),
+          ),
+          _NavItem(
+            icon: Icons.help_outline, 
+            label: 'Docs',
+            onTap: () {}, // No-op for now
+          ),
           const Spacer(),
           const Divider(height: 1),
           Padding(
@@ -81,8 +105,8 @@ class DashboardScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Developer', style: AppTextStyles.label),
-                      Text('demo@forge.dev',
+                      Text(sessionManager.signedInUser?.userName ?? 'Developer', style: AppTextStyles.label),
+                      Text(sessionManager.signedInUser?.email ?? 'Unknown Email',
                           style: AppTextStyles.bodySmall,
                           overflow: TextOverflow.ellipsis),
                     ],
@@ -92,6 +116,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -105,7 +130,7 @@ class DashboardScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text('Projects', style: AppTextStyles.h2),
+          Text(_selectedIndex == 0 ? 'Projects' : 'Settings', style: AppTextStyles.h2),
           const Spacer(),
           // Search
           SizedBox(
@@ -137,7 +162,12 @@ class DashboardScreen extends StatelessWidget {
           ),
           const Gap(16),
           ElevatedButton.icon(
-            onPressed: () => context.go('/wizard'),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const TemplateSelectionDialog(),
+              );
+            },
             icon: const Icon(Icons.add, size: 18),
             label: const Text('New Project'),
             style: ElevatedButton.styleFrom(
@@ -156,6 +186,9 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
+    if (_selectedIndex == 1) {
+      return _buildSettingsView();
+    }
     return BlocBuilder<DashboardCubit, DashboardState>(
       builder: (context, state) {
         if (state is DashboardLoading) {
@@ -220,6 +253,8 @@ class DashboardScreen extends StatelessWidget {
                           context.go('/pipeline/${p.id}');
                         } else if (p.status == ProjectStatus.draft) {
                           context.go('/wizard');
+                        } else if (p.status == ProjectStatus.ready) {
+                          context.go('/workspace/${p.id}');
                         }
                       },
                     ))
@@ -239,7 +274,7 @@ class DashboardScreen extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(Icons.add_circle_outline,
@@ -252,7 +287,12 @@ class DashboardScreen extends StatelessWidget {
               style: AppTextStyles.body),
           const Gap(24),
           ElevatedButton.icon(
-            onPressed: () => context.go('/wizard'),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const TemplateSelectionDialog(),
+              );
+            },
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Create Project'),
             style: ElevatedButton.styleFrom(
@@ -266,30 +306,113 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+  Widget _buildSettingsView() {
+    return BlocBuilder<DashboardCubit, DashboardState>(
+      builder: (context, state) {
+        String? apiKey;
+        if (state is DashboardLoaded) {
+          apiKey = state.globalApiKey;
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.settings, size: 32, color: AppColors.primary),
+                    const Gap(16),
+                    Text('Global Settings', style: AppTextStyles.h2),
+                  ],
+                ),
+                const Gap(8),
+                Text('Configure default settings that apply to all new projects.', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+                const Gap(48),
+                Text('AI Integration', style: AppTextStyles.h3),
+                const Gap(16),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Gemini API Key', style: AppTextStyles.label),
+                      const Gap(8),
+                      Text('This key will be used to automatically generate features and architecture for your new projects.', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
+                      const Gap(16),
+                      TextFormField(
+                        initialValue: apiKey,
+                        style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          hintText: 'Enter your Gemini API Key...',
+                          prefixIcon: const Icon(Icons.key, size: 18, color: AppColors.textMuted),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.primary),
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surfaceElevated,
+                        ),
+                        onChanged: (val) {
+                          context.read<DashboardCubit>().updateApiKey(val);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
+  final VoidCallback? onTap;
 
-  const _NavItem({required this.icon, required this.label, this.selected = false});
+  const _NavItem({
+    required this.icon, 
+    required this.label, 
+    this.selected = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary.withOpacity(0.12) : null,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        selected: selected,
+        selectedTileColor: AppColors.primary.withValues(alpha: 0.12),
         leading: Icon(icon,
             size: 20,
             color: selected ? AppColors.primary : AppColors.textMuted),
         title: Text(label,
             style: AppTextStyles.label.copyWith(
-                color: selected ? AppColors.primary : AppColors.textSecondary)),
+                color: selected ? AppColors.primary : AppColors.textMuted)),
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
       ),
@@ -377,13 +500,13 @@ class _ProjectCardState extends State<_ProjectCard> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _hovered
-                  ? AppColors.primary.withOpacity(0.4)
+                  ? AppColors.primary.withValues(alpha: 0.4)
                   : AppColors.border,
             ),
             boxShadow: _hovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.08),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
                     )
@@ -400,10 +523,10 @@ class _ProjectCardState extends State<_ProjectCard> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _statusColor.withOpacity(0.12),
+                      color: _statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                          color: _statusColor.withOpacity(0.3)),
+                          color: _statusColor.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

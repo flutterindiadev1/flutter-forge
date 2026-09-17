@@ -1,0 +1,5 @@
+class: MonetizationConfig
+fields:
+  model: MonetizationModel
+  provider: SubscriptionProvider?
+  plans: List<String>

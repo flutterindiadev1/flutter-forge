@@ -14,9 +14,22 @@ class DashboardLoading extends DashboardState {
 
 class DashboardLoaded extends DashboardState {
   final List<ProjectSummary> projects;
-  const DashboardLoaded(this.projects);
+  final String? globalApiKey;
+
+  const DashboardLoaded(this.projects, {this.globalApiKey});
+
+  DashboardLoaded copyWith({
+    List<ProjectSummary>? projects,
+    String? globalApiKey,
+  }) {
+    return DashboardLoaded(
+      projects ?? this.projects,
+      globalApiKey: globalApiKey ?? this.globalApiKey,
+    );
+  }
+
   @override
-  List<Object?> get props => [projects];
+  List<Object?> get props => [projects, globalApiKey];
 }
 
 class DashboardError extends DashboardState {

@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../cubit/pipeline_cubit.dart';
+import '../widgets/post_generation_panel.dart';
 
 
 class PipelineScreen extends StatefulWidget {
@@ -59,33 +60,35 @@ class _PipelineScreenState extends State<PipelineScreen>
                   children: [
                     // Phase timeline
                     _buildPhasePanel(state),
-                    // Log output + elicitation
+                    // Main content area
                     Expanded(
-                      child: Column(
-                        children: [
-                          if (state.isAwaitingElicitation)
-                            _ElicitationBanner(
-                              state: state,
-                              onAnswer: (answer) {
-                                if (!_answeredFirst) {
-                                  _answeredFirst = true;
-                                  context
-                                      .read<PipelineCubit>()
-                                      .answerElicitation(answer);
-                                } else {
-                                  context
-                                      .read<PipelineCubit>()
-                                      .answerSecondElicitation(answer);
-                                }
-                              },
+                      child: state.isComplete
+                          ? PostGenerationPanel(state: state)
+                          : Column(
+                              children: [
+                                if (state.isAwaitingElicitation)
+                                  _ElicitationBanner(
+                                    state: state,
+                                    onAnswer: (answer) {
+                                      if (!_answeredFirst) {
+                                        _answeredFirst = true;
+                                        context
+                                            .read<PipelineCubit>()
+                                            .answerElicitation(answer);
+                                      } else {
+                                        context
+                                            .read<PipelineCubit>()
+                                            .answerSecondElicitation(answer);
+                                      }
+                                    },
+                                  ),
+                                Expanded(child: _buildLogPanel(state)),
+                              ],
                             ),
-                          Expanded(child: _buildLogPanel(state)),
-                        ],
-                      ),
                     ),
-                    // Output tree panel
-                    if (state.isComplete)
-                      _OutputTreePanel(content: state.generatedPayloadPreview ?? ''),
+                    // Output tree panel (only when NOT complete, as PostGenPanel takes over)
+                    if (!state.isComplete && state.generatedPayloadPreview != null)
+                      _OutputTreePanel(content: state.generatedPayloadPreview!),
                   ],
                 ),
               ),
@@ -126,14 +129,14 @@ class _PipelineScreenState extends State<PipelineScreen>
           if (!state.isComplete)
             AnimatedBuilder(
               animation: _pulseController,
-              builder: (_, __) => Row(
+              builder: (_, _) => Row(
                 children: [
                   Container(
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(
-                          0.5 + _pulseController.value * 0.5),
+                      color: AppColors.primary.withValues(
+                          alpha: 0.5 + _pulseController.value * 0.5),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -144,6 +147,15 @@ class _PipelineScreenState extends State<PipelineScreen>
                   ),
                 ],
               ),
+            )
+          else if (state.phase == PipelinePhase.failed)
+            Row(
+              children: [
+                const Icon(Icons.error, color: AppColors.error, size: 18),
+                const Gap(8),
+                Text('Generation Failed',
+                    style: AppTextStyles.label.copyWith(color: AppColors.error)),
+              ],
             )
           else
             Row(
@@ -201,9 +213,7 @@ class _PipelineScreenState extends State<PipelineScreen>
         children: [
           Text('Pipeline Phases', style: AppTextStyles.h4),
           const Gap(20),
-          ...phases.asMap().entries.map((entry) {
-            final i = entry.key;
-            final phase = entry.value;
+          ...phases.map((phase) {
             final currentIdx = PipelinePhase.values.indexOf(state.phase);
             final phaseIdx = PipelinePhase.values.indexOf(phase.$1);
             final isDone = phaseIdx < currentIdx ||
@@ -317,20 +327,20 @@ class _PhaseRow extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   color: isDone
-                      ? AppColors.success.withOpacity(0.15)
+                      ? AppColors.success.withValues(alpha: 0.15)
                       : isCurrent
                           ? (isElicitation
-                              ? AppColors.warning.withOpacity(0.15)
-                              : AppColors.primary.withOpacity(0.15))
+                              ? AppColors.warning.withValues(alpha: 0.15)
+                              : AppColors.primary.withValues(alpha: 0.15))
                           : AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDone
-                        ? AppColors.success.withOpacity(0.4)
+                        ? AppColors.success.withValues(alpha: 0.4)
                         : isCurrent
                             ? (isElicitation
-                                ? AppColors.warning.withOpacity(0.5)
-                                : AppColors.primary.withOpacity(0.5))
+                                ? AppColors.warning.withValues(alpha: 0.5)
+                                : AppColors.primary.withValues(alpha: 0.5))
                             : AppColors.border,
                   ),
                 ),
@@ -441,9 +451,9 @@ class _ElicitationBanner extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.06),
+        color: AppColors.warning.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +471,7 @@ class _ElicitationBanner extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.15),
+                  color: AppColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text('Elicitation Phase',

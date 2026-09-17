@@ -17,11 +17,24 @@ import 'package:serverpod_client/serverpod_client.dart' as _i2;
 import 'dart:async' as _i3;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _i4;
-import 'package:flutterforge_backend_client/src/protocol/project_config.dart'
+import 'package:flutterforge_backend_client/src/protocol/ai_analysis_result.dart'
     as _i5;
-import 'package:flutterforge_backend_client/src/protocol/greetings/greeting.dart'
+import 'package:flutterforge_backend_client/src/protocol/pipeline_state_message.dart'
     as _i6;
-import 'protocol.dart' as _i7;
+import 'package:flutterforge_backend_client/src/protocol/pipeline_command.dart'
+    as _i7;
+import 'package:flutterforge_backend_client/src/protocol/project_config.dart'
+    as _i8;
+import 'package:flutterforge_backend_client/src/protocol/project_record.dart'
+    as _i9;
+import 'package:flutterforge_backend_client/src/protocol/pub_dependency.dart'
+    as _i10;
+import 'package:flutterforge_backend_client/src/protocol/user_settings.dart'
+    as _i11;
+import 'package:flutterforge_backend_client/src/protocol/greetings/greeting.dart'
+    as _i12;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i13;
+import 'protocol.dart' as _i14;
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -245,11 +258,46 @@ class EndpointJwtRefresh extends _i4.EndpointRefreshJwtTokens {
 }
 
 /// {@category Endpoint}
+class EndpointAi extends _i2.EndpointRef {
+  EndpointAi(_i2.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'ai';
+
+  _i3.Future<_i5.AiAnalysisResult> analyzeRequirements(
+    String apiKey,
+    String description,
+    Map<String, String>? answers,
+  ) => caller.callServerEndpoint<_i5.AiAnalysisResult>(
+    'ai',
+    'analyzeRequirements',
+    {
+      'apiKey': apiKey,
+      'description': description,
+      'answers': answers,
+    },
+  );
+}
+
+/// {@category Endpoint}
 class EndpointPipeline extends _i2.EndpointRef {
   EndpointPipeline(_i2.EndpointCaller caller) : super(caller);
 
   @override
   String get name => 'pipeline';
+
+  _i3.Stream<_i6.PipelineStateMessage> startPipeline(
+    _i3.Stream<_i7.PipelineCommand> commandStream,
+  ) =>
+      caller.callStreamingServerEndpoint<
+        _i3.Stream<_i6.PipelineStateMessage>,
+        _i6.PipelineStateMessage
+      >(
+        'pipeline',
+        'startPipeline',
+        {},
+        {'commandStream': commandStream},
+      );
 }
 
 /// {@category Endpoint}
@@ -259,12 +307,118 @@ class EndpointProject extends _i2.EndpointRef {
   @override
   String get name => 'project';
 
-  _i3.Future<String> submitConfig(_i5.ProjectConfig config) =>
+  _i3.Future<String> submitConfig(_i8.ProjectConfig config) =>
       caller.callServerEndpoint<String>(
         'project',
         'submitConfig',
         {'config': config},
       );
+
+  _i3.Future<List<_i9.ProjectRecord>> listProjects() =>
+      caller.callServerEndpoint<List<_i9.ProjectRecord>>(
+        'project',
+        'listProjects',
+        {},
+      );
+
+  _i3.Future<_i9.ProjectRecord?> getProject(String projectId) =>
+      caller.callServerEndpoint<_i9.ProjectRecord?>(
+        'project',
+        'getProject',
+        {'projectId': projectId},
+      );
+
+  _i3.Future<List<String>> listProjectFiles(String projectId) =>
+      caller.callServerEndpoint<List<String>>(
+        'project',
+        'listProjectFiles',
+        {'projectId': projectId},
+      );
+
+  _i3.Future<String?> getFileContent(
+    String projectId,
+    String filePath,
+  ) => caller.callServerEndpoint<String?>(
+    'project',
+    'getFileContent',
+    {
+      'projectId': projectId,
+      'filePath': filePath,
+    },
+  );
+
+  _i3.Future<bool> saveFileContent(
+    String projectId,
+    String filePath,
+    String content,
+  ) => caller.callServerEndpoint<bool>(
+    'project',
+    'saveFileContent',
+    {
+      'projectId': projectId,
+      'filePath': filePath,
+      'content': content,
+    },
+  );
+
+  _i3.Future<bool> commitAndPush(
+    String projectId,
+    String commitMessage,
+  ) => caller.callServerEndpoint<bool>(
+    'project',
+    'commitAndPush',
+    {
+      'projectId': projectId,
+      'commitMessage': commitMessage,
+    },
+  );
+
+  _i3.Future<_i10.PubDependency?> resolvePubDependency(String url) =>
+      caller.callServerEndpoint<_i10.PubDependency?>(
+        'project',
+        'resolvePubDependency',
+        {'url': url},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointUser extends _i2.EndpointRef {
+  EndpointUser(_i2.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'user';
+
+  _i3.Future<_i11.UserSettings> getSettings() =>
+      caller.callServerEndpoint<_i11.UserSettings>(
+        'user',
+        'getSettings',
+        {},
+      );
+
+  _i3.Future<void> saveApiKey(String key) => caller.callServerEndpoint<void>(
+    'user',
+    'saveApiKey',
+    {'key': key},
+  );
+
+  _i3.Future<void> deleteApiKey() => caller.callServerEndpoint<void>(
+    'user',
+    'deleteApiKey',
+    {},
+  );
+
+  _i3.Future<void> saveGithubToken(String key) =>
+      caller.callServerEndpoint<void>(
+        'user',
+        'saveGithubToken',
+        {'key': key},
+      );
+
+  _i3.Future<void> deleteGithubToken() => caller.callServerEndpoint<void>(
+    'user',
+    'deleteGithubToken',
+    {},
+  );
 }
 
 /// This is an example endpoint that returns a greeting message through
@@ -277,8 +431,8 @@ class EndpointGreeting extends _i2.EndpointRef {
   String get name => 'greeting';
 
   /// Returns a personalized greeting message: "Hello {name}".
-  _i3.Future<_i6.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i6.Greeting>(
+  _i3.Future<_i12.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i12.Greeting>(
         'greeting',
         'hello',
         {'name': name},
@@ -288,10 +442,13 @@ class EndpointGreeting extends _i2.EndpointRef {
 class Modules {
   Modules(Client client) {
     serverpod_auth_idp = _i1.Caller(client);
+    auth = _i13.Caller(client);
     serverpod_auth_core = _i4.Caller(client);
   }
 
   late final _i1.Caller serverpod_auth_idp;
+
+  late final _i13.Caller auth;
 
   late final _i4.Caller serverpod_auth_core;
 }
@@ -316,7 +473,7 @@ class Client extends _i2.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
          host,
-         _i7.Protocol(),
+         _i14.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -327,8 +484,10 @@ class Client extends _i2.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    ai = EndpointAi(this);
     pipeline = EndpointPipeline(this);
     project = EndpointProject(this);
+    user = EndpointUser(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -337,9 +496,13 @@ class Client extends _i2.ServerpodClientShared {
 
   late final EndpointJwtRefresh jwtRefresh;
 
+  late final EndpointAi ai;
+
   late final EndpointPipeline pipeline;
 
   late final EndpointProject project;
+
+  late final EndpointUser user;
 
   late final EndpointGreeting greeting;
 
@@ -349,14 +512,17 @@ class Client extends _i2.ServerpodClientShared {
   Map<String, _i2.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'ai': ai,
     'pipeline': pipeline,
     'project': project,
+    'user': user,
     'greeting': greeting,
   };
 
   @override
   Map<String, _i2.ModuleEndpointCaller> get moduleLookup => {
     'serverpod_auth_idp': modules.serverpod_auth_idp,
+    'auth': modules.auth,
     'serverpod_auth_core': modules.serverpod_auth_core,
   };
 }

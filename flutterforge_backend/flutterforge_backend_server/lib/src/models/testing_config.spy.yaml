@@ -1,0 +1,6 @@
+class: TestingConfig
+fields:
+  generateUnitTests: bool
+  generateWidgetTests: bool
+  generateIntegrationTests: bool
+  coverageTarget: int

@@ -1,0 +1,10 @@
+class: UserPersona
+fields:
+  type: UserPersonaType
+  role: String
+  goal: String
+  painPoints: String
+  needsScreenReader: bool
+  needsLargeText: bool
+  needsHighContrast: bool
+  needsReducedMotion: bool

@@ -1,9 +1,31 @@
 class: ProjectConfig
 fields:
-  projectId: String
+  projectId: String?
   projectName: String
+  description: String
+  team: String
   platforms: List<String>
-  figma: FigmaConfig?
-  postman: PostmanConfig?
-  architecture: ArchitectureConfig?
+  geminiApiKey: String
+  inspiredBy: String
+  persona: UserPersona?
+  templateId: String?
   features: List<FeatureNode>
+  customPainters: List<CustomPainterSpec>
+  nativeModules: List<NativeModuleSpec>
+  dependencies: List<PubDependency>
+  llmInstructions: List<LlmInstruction>
+  designSource: DesignSource
+  aiDesignBrief: AiDesignBrief?
+  figmaFileUrl: String?
+  figmaAccessToken: String?
+  appIcon: AssetFile?
+  assets: List<AssetFile>
+  architecture: ArchitectureConfig?
+  integrations: IntegrationConfig
+  environment: EnvironmentConfig
+  localization: LocalizationConfig
+  monetization: MonetizationConfig?
+  testing: TestingConfig
+  ciCd: CiCdConfig
+  postmanCollection: PostmanConfig?
+  githubToken: String?

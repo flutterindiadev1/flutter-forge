@@ -22,6 +22,14 @@ class AuthAuthenticated extends AuthState {
   List<Object?> get props => [email, displayName];
 }
 
+class AuthEmailVerificationNeeded extends AuthState {
+  final String email;
+  final String password;
+  const AuthEmailVerificationNeeded({required this.email, required this.password});
+  @override
+  List<Object?> get props => [email, password];
+}
+
 class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);

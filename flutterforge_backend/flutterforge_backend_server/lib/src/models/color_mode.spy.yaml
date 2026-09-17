@@ -1,0 +1,5 @@
+enum: ColorMode
+values:
+  - light
+  - dark
+  - system

@@ -1,0 +1,8 @@
+class: EnvironmentConfig
+fields:
+  hasDev: bool
+  hasStaging: bool
+  hasProd: bool
+  bundleIdBase: String
+  minIosVersion: String
+  minAndroidSdk: int
