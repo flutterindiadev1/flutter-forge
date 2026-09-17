@@ -57,12 +57,7 @@ class ScaffoldGenerator {
         workingDirectory: projectDir.path,
       );
 
-      process.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-        // We could yield stdout lines here, but we can't yield from a listen callback directly
-        // Instead, we will await the process and just print it for now.
-      });
-
-      // Wait, to stream process output we should use await for on process.stdout
+      // We will stream process output using await for on process.stdout
       
       double currentProgress = 0.2;
       await for (final line in process.stdout.transform(utf8.decoder).transform(const LineSplitter())) {

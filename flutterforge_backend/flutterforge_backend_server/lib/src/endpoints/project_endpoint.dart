@@ -12,10 +12,15 @@ class ProjectEndpoint extends Endpoint {
     session.log('Architecture: ${config.architecture?.pattern}');
     
     // Store in DB for pipeline processor to load
+    final patchedJson = {
+      ...config.toJson(),
+      'projectId': generatedId,
+    };
+    
     final record = ProjectRecord(
       projectId: generatedId,
       userId: session.authenticated?.userIdentifier?.toString(),
-      configJson: jsonEncode(config.toJson()),
+      configJson: jsonEncode(patchedJson),
       status: 'pending',
       createdAt: DateTime.now(),
     );

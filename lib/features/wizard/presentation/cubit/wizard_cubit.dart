@@ -18,26 +18,30 @@ class WizardCubit extends Cubit<WizardState> {
     final tId = templateId ?? 'Blank Canvas';
     String projectName = '';
     String description = '';
-    
+
     if (tId == 'E-Commerce') {
       projectName = 'E-Commerce App';
-      description = 'A fully-featured e-commerce platform with Cart, Payments, and Product Catalog features.';
+      description =
+          'A fully-featured e-commerce platform with Cart, Payments, and Product Catalog features.';
     } else if (tId == 'Social Media') {
       projectName = 'Social Network';
-      description = 'A social networking app including Feeds, Profiles, and Chat functionality.';
+      description =
+          'A social networking app including Feeds, Profiles, and Chat functionality.';
     } else if (tId == 'SaaS Dashboard') {
       projectName = 'Admin Portal';
       description = 'Admin panels, charts, and user management ready to go.';
     }
 
-    emit(WizardState(
-      config: ProjectConfig(
-        projectId: const Uuid().v4(),
-        templateId: tId,
-        projectName: projectName,
-        description: description,
+    emit(
+      WizardState(
+        config: ProjectConfig(
+          projectId: const Uuid().v4(),
+          templateId: tId,
+          projectName: projectName,
+          description: description,
+        ),
       ),
-    ));
+    );
     loadSavedApiKey();
   }
 
@@ -49,12 +53,12 @@ class WizardCubit extends Cubit<WizardState> {
       bool apiSaved = false;
       bool githubSaved = false;
       var newConfig = state.config;
-      
+
       if (settings.geminiApiKey != null && settings.geminiApiKey!.isNotEmpty) {
         newConfig = newConfig.copyWith(geminiApiKey: settings.geminiApiKey);
         apiSaved = true;
       }
-      
+
       // Load GitHub token as well
       if (settings.githubToken != null && settings.githubToken!.isNotEmpty) {
         newConfig = newConfig.copyWith(githubToken: settings.githubToken);
@@ -75,12 +79,18 @@ class WizardCubit extends Cubit<WizardState> {
   }
 
   Future<void> saveApiKey(String key) async {
+    emit(
+      state.copyWith(
+        config: state.config.copyWith(geminiApiKey: key),
+        apiKeySaved: key.isNotEmpty,
+      ),
+    );
     try {
       await client.user.saveApiKey(key);
       emit(
         state.copyWith(
           config: state.config.copyWith(geminiApiKey: key),
-          apiKeySaved: true,
+          apiKeySaved: key.isNotEmpty,
         ),
       );
     } catch (e) {
@@ -89,12 +99,18 @@ class WizardCubit extends Cubit<WizardState> {
   }
 
   Future<void> saveGithubToken(String key) async {
+    emit(
+      state.copyWith(
+        config: state.config.copyWith(githubToken: key),
+        githubTokenSaved: key.isNotEmpty,
+      ),
+    );
     try {
       await client.user.saveGithubToken(key);
       emit(
         state.copyWith(
           config: state.config.copyWith(githubToken: key),
-          githubTokenSaved: true,
+          githubTokenSaved: key.isNotEmpty,
         ),
       );
     } catch (e) {
@@ -148,7 +164,8 @@ class WizardCubit extends Cubit<WizardState> {
           ),
         ];
       } else {
-        final prompt = '''
+        final prompt =
+            '''
 You are a software architect. I am building a Flutter app named '${state.config.projectName}'.
 App description: '${state.config.description}'.
 ${state.config.persona != null ? "Target persona: ${state.config.persona!.role} (Goal: ${state.config.persona!.goal})" : ""}
@@ -164,7 +181,7 @@ Each object must have exactly these keys:
 
         final content = [Content.text(prompt)];
         String responseText = '[]';
-        
+
         try {
           final model = GenerativeModel(
             model: 'gemini-3.6-flash',
@@ -176,13 +193,16 @@ Each object must have exactly these keys:
           final response = await model.generateContent(content);
           responseText = response.text ?? '[]';
         } catch (e1) {
-          if (e1.toString().contains('503') || e1.toString().contains('UNAVAILABLE')) {
-            throw Exception('The AI model is currently experiencing high demand. Please try again later.');
+          if (e1.toString().contains('503') ||
+              e1.toString().contains('UNAVAILABLE')) {
+            throw Exception(
+              'The AI model is currently experiencing high demand. Please try again later.',
+            );
           }
-          debugPrint('Falling back to gemini-1.5-pro due to: $e1');
+          debugPrint('Falling back to gemini-3.1-pro due to: $e1');
           try {
             final fallbackModel = GenerativeModel(
-              model: 'gemini-1.5-pro',
+              model: 'gemini-3.1-pro',
               apiKey: apiKey,
               generationConfig: GenerationConfig(
                 responseMimeType: 'application/json',
@@ -191,17 +211,15 @@ Each object must have exactly these keys:
             final response = await fallbackModel.generateContent(content);
             responseText = response.text ?? '[]';
           } catch (e2) {
-            if (e2.toString().contains('503') || e2.toString().contains('UNAVAILABLE')) {
-              throw Exception('The AI model is currently experiencing high demand. Please try again later.');
+            if (e2.toString().contains('503') ||
+                e2.toString().contains('UNAVAILABLE')) {
+              throw Exception('Error on gemini-3.1-pro Error : $e2');
             }
-            debugPrint('Both AI calls failed. Falling back to dummy features. Error: $e2');
-            generatedFeatures = [
-              FeatureNode(id: const Uuid().v4(), name: 'Authentication', description: 'Login, signup', layer: FeatureLayer.domain, dependencyIds: const [], x: 100, y: 100),
-              FeatureNode(id: const Uuid().v4(), name: 'Dashboard', description: 'Main view', layer: FeatureLayer.ui, dependencyIds: const [], x: 300, y: 100),
-            ];
+            debugPrint('Both AI calls failed. e1: $e1 | e2: $e2');
+            throw Exception('Models failed. 3.6-flash: $e1\ngemini-3.1-pro: $e2');
           }
         }
-        
+
         if (generatedFeatures.isEmpty) {
           String cleanJson = responseText.trim();
           if (cleanJson.startsWith('```json')) {
@@ -213,17 +231,19 @@ Each object must have exactly these keys:
             cleanJson = cleanJson.substring(0, cleanJson.length - 3);
           }
           cleanJson = cleanJson.trim();
-          
+
           final List<dynamic> jsonList = jsonDecode(cleanJson);
           final Map<String, String> nameToId = {};
           final Map<String, List<String>> nameToDeps = {};
-          
+
           double currentX = 100;
           double currentY = 100;
-          
+
           // First pass: generate IDs and map them
           for (var item in jsonList) {
-            final name = (item as Map<String, dynamic>)['name']?.toString() ?? 'Unknown Feature';
+            final name =
+                (item as Map<String, dynamic>)['name']?.toString() ??
+                'Unknown Feature';
             nameToId[name] = const Uuid().v4();
             nameToDeps[name] = List<String>.from(item['dependencies'] ?? []);
           }
@@ -231,13 +251,21 @@ Each object must have exactly these keys:
           for (var i = 0; i < jsonList.length; i++) {
             final item = jsonList[i] as Map<String, dynamic>;
             final name = item['name']?.toString() ?? 'Unknown Feature';
-            final layerStr = item['layer']?.toString().toLowerCase() ?? 'domain';
+            final layerStr =
+                item['layer']?.toString().toLowerCase() ?? 'domain';
             FeatureLayer layer;
             switch (layerStr) {
-              case 'ui': layer = FeatureLayer.ui; break;
-              case 'data': layer = FeatureLayer.data; break;
-              case 'shared': layer = FeatureLayer.shared; break;
-              default: layer = FeatureLayer.domain;
+              case 'ui':
+                layer = FeatureLayer.ui;
+                break;
+              case 'data':
+                layer = FeatureLayer.data;
+                break;
+              case 'shared':
+                layer = FeatureLayer.shared;
+                break;
+              default:
+                layer = FeatureLayer.domain;
             }
 
             final depNames = nameToDeps[name] ?? [];
@@ -692,8 +720,15 @@ Each object must have exactly these keys:
   // ─── Submit ───────────────────────────────────────────────────────────────
 
   Future<bool> submitProject() async {
-    if (!state.githubTokenSaved && (state.config.githubToken == null || state.config.githubToken!.isEmpty)) {
-      emit(state.copyWith(errorMessage: 'GitHub Token is required for the pipeline to push to your repository. Please go back to Step 1 and provide it.'));
+    if (!state.githubTokenSaved &&
+        (state.config.githubToken == null ||
+            state.config.githubToken!.isEmpty)) {
+      emit(
+        state.copyWith(
+          errorMessage:
+              'GitHub Token is required for the pipeline to push to your repository. Please go back to Step 1 and provide it.',
+        ),
+      );
       return false;
     }
     emit(state.copyWith(isSubmitting: true, clearError: true));
@@ -707,37 +742,134 @@ Each object must have exactly these keys:
         platforms: local.platforms,
         geminiApiKey: local.geminiApiKey,
         inspiredBy: local.inspiredBy,
-        persona: local.persona != null ? sp.UserPersona(
-          type: sp.UserPersonaType.values.firstWhere((e) => e.name == local.persona!.type.name, orElse: () => sp.UserPersonaType.general),
-          role: local.persona!.role,
-          goal: local.persona!.goal,
-          painPoints: local.persona!.painPoints,
-          needsScreenReader: local.persona!.needsScreenReader,
-          needsLargeText: local.persona!.needsLargeText,
-          needsHighContrast: local.persona!.needsHighContrast,
-          needsReducedMotion: local.persona!.needsReducedMotion,
-        ) : null,
+        persona: local.persona != null
+            ? sp.UserPersona(
+                type: sp.UserPersonaType.values.firstWhere(
+                  (e) => e.name == local.persona!.type.name,
+                  orElse: () => sp.UserPersonaType.general,
+                ),
+                role: local.persona!.role,
+                goal: local.persona!.goal,
+                painPoints: local.persona!.painPoints,
+                needsScreenReader: local.persona!.needsScreenReader,
+                needsLargeText: local.persona!.needsLargeText,
+                needsHighContrast: local.persona!.needsHighContrast,
+                needsReducedMotion: local.persona!.needsReducedMotion,
+              )
+            : null,
         templateId: local.templateId,
-        features: local.features.map((f) => sp.FeatureNode(nodeId: f.id, name: f.name, layer: sp.FeatureLayer.values.firstWhere((e) => e.name == f.layer.name, orElse: () => sp.FeatureLayer.shared), dependencyIds: f.dependencyIds)).toList(),
-        nativeModules: local.nativeModules.map((m) => sp.NativeModuleSpec(id: m.id, moduleName: m.moduleName, description: m.description, platforms: m.platforms, featureId: m.featureId)).toList(),
-        customPainters: local.customPainters.map((p) => sp.CustomPainterSpec(id: p.id, name: p.name, description: p.description, featureId: p.featureId)).toList(),
-        dependencies: local.dependencies.map((d) => sp.PubDependency(id: d.id, packageName: d.packageName, pubDevUrl: d.pubDevUrl, version: d.version)).toList(),
-        llmInstructions: local.llmInstructions.map((i) => sp.LlmInstruction(id: i.id, instruction: i.instruction, featureId: i.featureId)).toList(),
-        designSource: sp.DesignSource.values.firstWhere((e) => e.name == local.designSource.name, orElse: () => sp.DesignSource.aiGenerated),
-        aiDesignBrief: local.aiDesignBrief != null ? sp.AiDesignBrief(
-          prompt: local.aiDesignBrief!.prompt,
-          stylePreference: local.aiDesignBrief!.stylePreference,
-          style: sp.AppStyle.values.firstWhere((e) => e.name == local.aiDesignBrief!.style.name, orElse: () => sp.AppStyle.material3),
-          primaryColor: local.aiDesignBrief!.primaryColor,
-          typography: sp.TypographyFeel.values.firstWhere((e) => e.name == local.aiDesignBrief!.typography.name, orElse: () => sp.TypographyFeel.modern),
-          colorMode: sp.ColorMode.values.firstWhere((e) => e.name == local.aiDesignBrief!.colorMode.name, orElse: () => sp.ColorMode.system),
-          density: sp.LayoutDensity.values.firstWhere((e) => e.name == local.aiDesignBrief!.density.name, orElse: () => sp.LayoutDensity.comfortable),
-        ) : null,
+        features: local.features
+            .map(
+              (f) => sp.FeatureNode(
+                nodeId: f.id,
+                name: f.name,
+                layer: sp.FeatureLayer.values.firstWhere(
+                  (e) => e.name == f.layer.name,
+                  orElse: () => sp.FeatureLayer.shared,
+                ),
+                dependencyIds: f.dependencyIds,
+              ),
+            )
+            .toList(),
+        nativeModules: local.nativeModules
+            .map(
+              (m) => sp.NativeModuleSpec(
+                id: m.id,
+                moduleName: m.moduleName,
+                description: m.description,
+                platforms: m.platforms,
+                featureId: m.featureId,
+              ),
+            )
+            .toList(),
+        customPainters: local.customPainters
+            .map(
+              (p) => sp.CustomPainterSpec(
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                featureId: p.featureId,
+              ),
+            )
+            .toList(),
+        dependencies: local.dependencies
+            .map(
+              (d) => sp.PubDependency(
+                id: d.id,
+                packageName: d.packageName,
+                pubDevUrl: d.pubDevUrl,
+                version: d.version,
+              ),
+            )
+            .toList(),
+        llmInstructions: local.llmInstructions
+            .map(
+              (i) => sp.LlmInstruction(
+                id: i.id,
+                instruction: i.instruction,
+                featureId: i.featureId,
+              ),
+            )
+            .toList(),
+        designSource: sp.DesignSource.values.firstWhere(
+          (e) => e.name == local.designSource.name,
+          orElse: () => sp.DesignSource.aiGenerated,
+        ),
+        aiDesignBrief: local.aiDesignBrief != null
+            ? sp.AiDesignBrief(
+                prompt: local.aiDesignBrief!.prompt,
+                stylePreference: local.aiDesignBrief!.stylePreference,
+                style: sp.AppStyle.values.firstWhere(
+                  (e) => e.name == local.aiDesignBrief!.style.name,
+                  orElse: () => sp.AppStyle.material3,
+                ),
+                primaryColor: local.aiDesignBrief!.primaryColor,
+                typography: sp.TypographyFeel.values.firstWhere(
+                  (e) => e.name == local.aiDesignBrief!.typography.name,
+                  orElse: () => sp.TypographyFeel.modern,
+                ),
+                colorMode: sp.ColorMode.values.firstWhere(
+                  (e) => e.name == local.aiDesignBrief!.colorMode.name,
+                  orElse: () => sp.ColorMode.system,
+                ),
+                density: sp.LayoutDensity.values.firstWhere(
+                  (e) => e.name == local.aiDesignBrief!.density.name,
+                  orElse: () => sp.LayoutDensity.comfortable,
+                ),
+              )
+            : null,
         figmaFileUrl: local.figmaFileUrl,
         figmaAccessToken: local.figmaAccessToken,
-        appIcon: local.appIcon != null ? sp.AssetFile(id: local.appIcon!.id, name: local.appIcon!.name, type: local.appIcon!.type, url: local.appIcon!.url, sizeBytes: local.appIcon!.sizeBytes) : null,
-        assets: local.assets.map((a) => sp.AssetFile(id: a.id, name: a.name, type: a.type, url: a.url, sizeBytes: a.sizeBytes)).toList(),
-        architecture: local.architecture != null ? sp.ArchitectureConfig(pattern: local.architecture!.pattern, stateManagement: local.architecture!.stateManagement, di: local.architecture!.di, network: local.architecture!.network, localStorage: local.architecture!.localStorage, navigation: local.architecture!.navigation) : null,
+        appIcon: local.appIcon != null
+            ? sp.AssetFile(
+                id: local.appIcon!.id,
+                name: local.appIcon!.name,
+                type: local.appIcon!.type,
+                url: local.appIcon!.url,
+                sizeBytes: local.appIcon!.sizeBytes,
+              )
+            : null,
+        assets: local.assets
+            .map(
+              (a) => sp.AssetFile(
+                id: a.id,
+                name: a.name,
+                type: a.type,
+                url: a.url,
+                sizeBytes: a.sizeBytes,
+              ),
+            )
+            .toList(),
+        architecture: local.architecture != null
+            ? sp.ArchitectureConfig(
+                pattern: local.architecture!.pattern,
+                stateManagement: local.architecture!.stateManagement,
+                di: local.architecture!.di,
+                network: local.architecture!.network,
+                localStorage: local.architecture!.localStorage,
+                navigation: local.architecture!.navigation,
+              )
+            : null,
         integrations: sp.IntegrationConfig(
           firebaseAuth: local.integrations.firebaseAuth,
           firebaseFirestore: local.integrations.firebaseFirestore,
@@ -770,26 +902,54 @@ Each object must have exactly these keys:
           targetLanguages: local.localization.targetLanguages,
           defaultLanguage: local.localization.defaultLanguage,
         ),
-        monetization: local.monetization != null ? sp.MonetizationConfig(
-          model: sp.MonetizationModel.values.firstWhere((e) => e.name == local.monetization!.model.name, orElse: () => sp.MonetizationModel.free),
-          provider: local.monetization!.provider != null ? sp.SubscriptionProvider.values.firstWhere((e) => e.name == local.monetization!.provider!.name, orElse: () => sp.SubscriptionProvider.revenueCat) : null,
-          plans: local.monetization!.plans,
-        ) : null,
+        monetization: local.monetization != null
+            ? sp.MonetizationConfig(
+                model: sp.MonetizationModel.values.firstWhere(
+                  (e) => e.name == local.monetization!.model.name,
+                  orElse: () => sp.MonetizationModel.free,
+                ),
+                provider: local.monetization!.provider != null
+                    ? sp.SubscriptionProvider.values.firstWhere(
+                        (e) => e.name == local.monetization!.provider!.name,
+                        orElse: () => sp.SubscriptionProvider.revenueCat,
+                      )
+                    : null,
+                plans: local.monetization!.plans,
+              )
+            : null,
         testing: sp.TestingConfig(
           generateUnitTests: local.testing.generateUnitTests,
           generateWidgetTests: local.testing.generateWidgetTests,
           generateIntegrationTests: local.testing.generateIntegrationTests,
           coverageTarget: local.testing.coverageTarget,
         ),
-        ciCd: sp.CiCdConfig(platform: sp.CiCdPlatform.values.firstWhere((e) => e.name == local.ciCd.platform.name, orElse: () => sp.CiCdPlatform.none), runTestsOnPr: local.ciCd.runTestsOnPr, deployToFirebaseAppDistribution: local.ciCd.deployToFirebaseAppDistribution, deployToStores: local.ciCd.deployToStores, notifySlack: local.ciCd.notifySlack),
-        postmanCollection: local.postmanCollection != null ? sp.PostmanConfig(collectionVersion: local.postmanCollection!.version, name: local.postmanCollection!.name, folderCount: local.postmanCollection!.folders.length) : null,
+        ciCd: sp.CiCdConfig(
+          platform: sp.CiCdPlatform.values.firstWhere(
+            (e) => e.name == local.ciCd.platform.name,
+            orElse: () => sp.CiCdPlatform.none,
+          ),
+          runTestsOnPr: local.ciCd.runTestsOnPr,
+          deployToFirebaseAppDistribution:
+              local.ciCd.deployToFirebaseAppDistribution,
+          deployToStores: local.ciCd.deployToStores,
+          notifySlack: local.ciCd.notifySlack,
+        ),
+        postmanCollection: local.postmanCollection != null
+            ? sp.PostmanConfig(
+                collectionVersion: local.postmanCollection!.version,
+                name: local.postmanCollection!.name,
+                folderCount: local.postmanCollection!.folders.length,
+              )
+            : null,
         githubToken: local.githubToken,
       );
 
       final generatedId = await client.project.submitConfig(spConfig);
-      
+
       // Update local state with the backend-generated ID
-      emit(state.copyWith(config: state.config.copyWith(projectId: generatedId)));
+      emit(
+        state.copyWith(config: state.config.copyWith(projectId: generatedId)),
+      );
       return true;
     } catch (e) {
       debugPrint('Error submitting project config to Serverpod: $e');
@@ -801,22 +961,21 @@ Each object must have exactly these keys:
   }
 
   Map<String, dynamic> get finalPayload => state.config.toJson();
-  Future<({List<String> questions, List<String> features})> analyzeRequirements(String? apiKey, Map<String, String>? answers) async {
+  Future<({List<String> questions, List<String> features})> analyzeRequirements(
+    String? apiKey,
+    Map<String, String>? answers,
+  ) async {
     // Simulate AI analysis delay
     await Future.delayed(const Duration(seconds: 2));
-    
+
     // In a real implementation, this would use the Gemini API to analyze the prompt and answers
     // and return dynamic questions and features.
     return (
       questions: [
         'Do you need offline support?',
-        'Will there be user-generated content?'
+        'Will there be user-generated content?',
       ],
-      features: [
-        'User Authentication',
-        'Profile Management',
-        'Cloud Sync'
-      ]
+      features: ['User Authentication', 'Profile Management', 'Cloud Sync'],
     );
   }
 }

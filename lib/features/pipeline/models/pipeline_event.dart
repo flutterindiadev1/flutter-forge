@@ -18,6 +18,7 @@ class PipelineEvent extends Equatable {
 }
 
 class PipelineState extends Equatable {
+  final String? projectId;
   final PipelinePhase phase;
   final double phaseProgress; // 0.0 - 1.0
   final List<PipelineEvent> logs;
@@ -29,6 +30,7 @@ class PipelineState extends Equatable {
   final bool isComplete;
 
   const PipelineState({
+    this.projectId,
     this.phase = PipelinePhase.parsing,
     this.phaseProgress = 0.0,
     this.logs = const [],
@@ -41,6 +43,7 @@ class PipelineState extends Equatable {
   });
 
   PipelineState copyWith({
+    String? projectId,
     PipelinePhase? phase,
     double? phaseProgress,
     List<PipelineEvent>? logs,
@@ -53,6 +56,7 @@ class PipelineState extends Equatable {
     bool clearElicitation = false,
   }) {
     return PipelineState(
+      projectId: projectId ?? this.projectId,
       phase: phase ?? this.phase,
       phaseProgress: phaseProgress ?? this.phaseProgress,
       logs: logs ?? this.logs,
@@ -75,5 +79,5 @@ class PipelineState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [phase, phaseProgress, logs, isAwaitingElicitation, isComplete];
+  List<Object?> get props => [projectId, phase, phaseProgress, logs, isAwaitingElicitation, isComplete];
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import '../../../../app/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 import '../cubit/pipeline_state.dart';
 
 class PostGenerationPanel extends StatefulWidget {
@@ -37,10 +38,34 @@ class _PostGenerationPanelState extends State<PostGenerationPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Next Steps', style: AppTextStyles.h2),
-            const Gap(8),
-            Text('Your Flutter app has been successfully generated. What would you like to do next?',
-                style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Next Steps', style: AppTextStyles.h2),
+                      const Gap(8),
+                      Text('Your Flutter app has been successfully generated. What would you like to do next?',
+                          style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                if (widget.state.projectId != null)
+                  ElevatedButton.icon(
+                    onPressed: () => context.go('/workspace/${widget.state.projectId}'),
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('Open Workspace'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+              ],
+            ),
             const Gap(32),
             
             // Layout: Row with Push & CI/CD on left, AI Chat on right

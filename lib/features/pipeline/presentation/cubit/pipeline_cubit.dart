@@ -12,7 +12,7 @@ class PipelineCubit extends Cubit<PipelineState> {
   final StreamController<sp.PipelineCommand> _commandStreamController = StreamController<sp.PipelineCommand>.broadcast();
 
   PipelineCubit({required this.projectId})
-      : super(const PipelineState()) {
+      : super(PipelineState(projectId: projectId)) {
     _startPipeline();
   }
 
@@ -80,6 +80,12 @@ class PipelineCubit extends Cubit<PipelineState> {
   
   void answerSecondElicitation(String answer) {
     submitElicitationAnswer(answer);
+  }
+
+  void retryPipeline() {
+    _subscription?.cancel();
+    emit(PipelineState(projectId: projectId));
+    _startPipeline();
   }
 
   @override

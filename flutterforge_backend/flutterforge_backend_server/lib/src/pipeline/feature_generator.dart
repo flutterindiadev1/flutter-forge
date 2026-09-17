@@ -43,7 +43,7 @@ class FeatureGenerator {
     );
 
     final model = GenerativeModel(
-      model: 'gemini-1.5-pro',
+      model: 'gemini-3.6-flash',
       apiKey: config.geminiApiKey,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
@@ -84,32 +84,66 @@ class FeatureGenerator {
           progress: featureProgressStart + 0.1,
         );
 
-        String responseText = '{}';
+        Map<String, dynamic>? parsed;
+        
         try {
-          final response = await model.generateContent([Content.text(prompt)]);
-          responseText = response.text ?? '{}';
+          int retries = 0;
+          
+          while (retries < 5) {
+            try {
+              final response = await model.generateContent([Content.text(prompt)]);
+              final rawText = response.text ?? '{}';
+              final startIndex = rawText.indexOf('{');
+              final endIndex = rawText.lastIndexOf('}');
+              
+              String responseText = rawText;
+              if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+                responseText = rawText.substring(startIndex, endIndex + 1);
+              }
+              
+              parsed = jsonDecode(responseText);
+              break; // Break on successful generation and parse
+            } catch (e) {
+              final errorStr = e.toString();
+              if (errorStr.contains('Quota exceeded') || errorStr.contains('429')) {
+                if (retries == 4) rethrow;
+                yield FeatureGeneratorEvent(
+                  message: 'Rate limit hit for ${feature.name}. Waiting 60s before retrying...',
+                  level: 'warning',
+                  progress: featureProgressStart + 0.1,
+                );
+                await Future.delayed(const Duration(seconds: 60));
+                retries++;
+              } else if (e is FormatException) {
+                if (retries == 4) {
+                  yield FeatureGeneratorEvent(
+                    message: 'Failed to parse JSON from AI for ${feature.name}: $e. Skipping feature...',
+                    level: 'warning',
+                    progress: featureProgressStart,
+                  );
+                  continue;
+                }
+                yield FeatureGeneratorEvent(
+                  message: 'AI returned malformed JSON for ${feature.name}. Retrying...',
+                  level: 'warning',
+                  progress: featureProgressStart + 0.1,
+                );
+                retries++;
+              } else {
+                rethrow;
+              }
+            }
+          }
         } catch (e) {
           yield FeatureGeneratorEvent(
-            message: 'AI Generation failed for ${feature.name}: $e',
-            level: 'error',
+            message: 'AI Generation failed for ${feature.name}: $e. Skipping feature...',
+            level: 'warning',
             progress: featureProgressStart,
-            isError: true,
           );
-          return;
+          continue;
         }
 
-        Map<String, dynamic> parsed;
-        try {
-          parsed = jsonDecode(responseText);
-        } catch (e) {
-          yield FeatureGeneratorEvent(
-            message: 'Failed to parse JSON from AI for ${feature.name}: $e',
-            level: 'error',
-            progress: featureProgressStart,
-            isError: true,
-          );
-          return;
-        }
+        if (parsed == null) continue;
 
         if (parsed.containsKey('question') && parsed['question'] != null && elicitationCount < 2) {
           final question = parsed['question'] as String;
@@ -185,13 +219,16 @@ class FeatureGenerator {
   }
 
   String _buildPrompt(ProjectConfig config, FeatureNode feature, String contextMemory) {
+    final pattern = config.architecture?.pattern ?? 'clean_architecture';
+    final stateManagement = config.architecture?.stateManagement ?? 'bloc';
+
     return '''
 You are an expert Flutter Developer and Architect.
 I am building a Flutter app with the following configuration:
 Project Name: ${config.projectName}
 Description: ${config.description}
-Architecture Pattern: ${config.architecture?.pattern ?? 'Not specified'}
-State Management: ${config.architecture?.stateManagement ?? 'Not specified'}
+Architecture Pattern: $pattern
+State Management: $stateManagement
 
 Your task is to implement the following feature:
 Feature Name: ${feature.name}

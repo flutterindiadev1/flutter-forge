@@ -249,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 .map((p) => _ProjectCard(
                       project: p,
                       onTap: () {
-                        if (p.status == ProjectStatus.generating) {
+                        if (p.status == ProjectStatus.generating || p.status == ProjectStatus.failed) {
                           context.go('/pipeline/${p.id}');
                         } else if (p.status == ProjectStatus.draft) {
                           context.go('/wizard');

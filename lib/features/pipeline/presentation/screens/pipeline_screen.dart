@@ -62,7 +62,7 @@ class _PipelineScreenState extends State<PipelineScreen>
                     _buildPhasePanel(state),
                     // Main content area
                     Expanded(
-                      child: state.isComplete
+                      child: state.isComplete && state.phase != PipelinePhase.failed
                           ? PostGenerationPanel(state: state)
                           : Column(
                               children: [
@@ -167,7 +167,19 @@ class _PipelineScreenState extends State<PipelineScreen>
               ],
             ),
           const Spacer(),
-          if (state.isComplete)
+          if (state.phase == PipelinePhase.failed)
+            ElevatedButton.icon(
+              onPressed: () => context.read<PipelineCubit>().retryPipeline(),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            )
+          else if (state.isComplete)
             ElevatedButton.icon(
               onPressed: () => context.go('/dashboard'),
               icon: const Icon(Icons.dashboard_outlined, size: 18),
@@ -217,7 +229,7 @@ class _PipelineScreenState extends State<PipelineScreen>
             final currentIdx = PipelinePhase.values.indexOf(state.phase);
             final phaseIdx = PipelinePhase.values.indexOf(phase.$1);
             final isDone = phaseIdx < currentIdx ||
-                (state.isComplete);
+                (state.isComplete && state.phase != PipelinePhase.failed);
             final isCurrent = phaseIdx == currentIdx;
             final isWaiting = phaseIdx > currentIdx;
 
@@ -234,9 +246,9 @@ class _PipelineScreenState extends State<PipelineScreen>
           }),
           if (state.isComplete)
             _PhaseRow(
-              icon: Icons.rocket_launch,
-              label: 'Complete!',
-              isDone: true,
+              icon: state.phase == PipelinePhase.failed ? Icons.error_outline : Icons.check_circle_outline,
+              label: state.phase == PipelinePhase.failed ? 'Failed' : 'Complete!',
+              isDone: state.isComplete && state.phase != PipelinePhase.failed,
               isCurrent: false,
               isWaiting: false,
               progress: 1.0,
