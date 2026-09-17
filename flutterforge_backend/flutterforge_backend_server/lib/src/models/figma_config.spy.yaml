@@ -1,0 +1,4 @@
+class: FigmaConfig
+fields:
+  fileUrl: String
+  accessToken: String

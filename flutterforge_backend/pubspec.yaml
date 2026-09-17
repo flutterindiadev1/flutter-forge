@@ -1,0 +1,11 @@
+name: _
+publish_to: none
+
+environment:
+  sdk: '^3.8.0'
+
+workspace:
+  - flutterforge_backend_client
+  - flutterforge_backend_server
+  - flutterforge_backend_flutter
+

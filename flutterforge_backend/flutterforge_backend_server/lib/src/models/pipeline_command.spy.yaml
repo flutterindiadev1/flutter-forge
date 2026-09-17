@@ -1,0 +1,4 @@
+class: PipelineCommand
+fields:
+  command: String
+  payload: String?

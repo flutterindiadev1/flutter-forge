@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../models/project_config.dart';
 import '../../models/feature_node.dart';
 import 'wizard_state.dart';
+import '../../../../core/network/api_client.dart';
+import 'package:flutterforge_backend_client/flutterforge_backend_client.dart' as sp;
 
 class WizardCubit extends Cubit<WizardState> {
   WizardCubit()
@@ -189,9 +191,47 @@ class WizardCubit extends Cubit<WizardState> {
 
   Future<void> submitProject() async {
     emit(state.copyWith(isSubmitting: true));
-    await Future.delayed(const Duration(milliseconds: 800));
-    // The pipeline screen will handle navigation after receiving the config
-    emit(state.copyWith(isSubmitting: false));
+    try {
+      final local = state.config;
+      final spConfig = sp.ProjectConfig(
+        projectId: local.projectId ?? 'no-id',
+        projectName: local.projectName ?? 'Untitled',
+        platforms: local.platforms,
+        figma: local.figmaFileUrl != null && local.figmaAccessToken != null ? sp.FigmaConfig(
+          fileUrl: local.figmaFileUrl!,
+          accessToken: local.figmaAccessToken!,
+        ) : null,
+        postman: local.postmanCollection != null ? sp.PostmanConfig(
+          collectionVersion: local.postmanCollection!.version,
+          name: local.postmanCollection!.name,
+          folderCount: local.postmanCollection!.folders.length,
+        ) : null,
+        architecture: local.architecture != null ? sp.ArchitectureConfig(
+          pattern: local.architecture!.pattern,
+          stateManagement: local.architecture!.stateManagement,
+          di: local.architecture!.di,
+          network: local.architecture!.network,
+          localStorage: local.architecture!.localStorage,
+          navigation: local.architecture!.navigation,
+        ) : null,
+        features: local.features.map((f) => sp.FeatureNode(
+          nodeId: f.id,
+          name: f.name,
+          layer: sp.FeatureLayer.values.firstWhere(
+            (e) => e.name == f.layer.name,
+            orElse: () => sp.FeatureLayer.shared,
+          ),
+          dependencyIds: f.dependencyIds,
+        )).toList(),
+      );
+
+      await client.project.submitConfig(spConfig);
+      // The pipeline screen will handle navigation and connect to the stream.
+    } catch (e) {
+      print('Error submitting project config to Serverpod: $e');
+    } finally {
+      emit(state.copyWith(isSubmitting: false));
+    }
   }
 
   Map<String, dynamic> get finalPayload => state.config.toJson();

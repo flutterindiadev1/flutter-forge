@@ -1,0 +1,6 @@
+class: FeatureNode
+fields:
+  nodeId: String
+  name: String
+  layer: FeatureLayer
+  dependencyIds: List<String>

@@ -1,0 +1,8 @@
+class: ArchitectureConfig
+fields:
+  pattern: String
+  stateManagement: String
+  di: String
+  network: String
+  localStorage: String
+  navigation: String

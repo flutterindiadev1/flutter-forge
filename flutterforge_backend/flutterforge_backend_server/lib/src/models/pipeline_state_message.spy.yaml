@@ -1,0 +1,11 @@
+class: PipelineStateMessage
+fields:
+  phase: PipelinePhase
+  phaseProgress: double
+  logs: List<PipelineEvent>
+  isAwaitingElicitation: bool
+  currentElicitationQuestion: String?
+  elicitationContext: String?
+  elicitationOptions: List<String>?
+  generatedPayloadPreview: String?
+  isComplete: bool

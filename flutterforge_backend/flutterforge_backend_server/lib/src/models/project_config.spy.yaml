@@ -1,0 +1,9 @@
+class: ProjectConfig
+fields:
+  projectId: String
+  projectName: String
+  platforms: List<String>
+  figma: FigmaConfig?
+  postman: PostmanConfig?
+  architecture: ArchitectureConfig?
+  features: List<FeatureNode>

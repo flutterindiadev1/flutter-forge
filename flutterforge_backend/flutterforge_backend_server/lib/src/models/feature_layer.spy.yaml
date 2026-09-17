@@ -1,0 +1,6 @@
+enum: FeatureLayer
+values:
+  - ui
+  - domain
+  - data
+  - shared

@@ -22,6 +22,9 @@ dependencies:
 
   # Networking
   dio: ^5.7.0
+  serverpod_flutter: ^3.4.13
+  flutterforge_backend_client:
+    path: flutterforge_backend/flutterforge_backend_client
 
   # File Handling
   file_picker: ^8.1.7
