@@ -10,6 +10,7 @@ import 'paywall_generator.dart';
 import 'settings_generator.dart';
 import 'feature_scaffolder.dart';
 import 'pubspec_patcher.dart';
+import 'cicd_generator.dart';
 
 class PipelineOrchestrator {
   final ProjectConfig config;
@@ -179,6 +180,14 @@ class PipelineOrchestrator {
       if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
     }
 
+    // Phase 4: CI/CD Pipeline
+    yield createState(PipelinePhase.structureGen, 0.9);
+    final cicdGen = CicdGenerator();
+    await for (final event in cicdGen.generate(config)) {
+      addLog(event.message, level: event.level);
+      yield createState(PipelinePhase.structureGen, 0.9 + (event.progress * 0.1));
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
+    }
 
     addLog('Pipeline Complete!', level: 'success');
     yield createState(PipelinePhase.done, 1.0, isComplete: true, preview: 'lib/\n└── main.dart\n');

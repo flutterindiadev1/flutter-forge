@@ -1,0 +1,18 @@
+import 'package:flutter/foundation.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'settings_state.dart';
+
+class SettingsProvider extends ChangeNotifier {
+  SettingsState _state = SettingsInitial();
+  SettingsState get state => _state;
+
+  Future<void> requestReview() async {
+    final InAppReview inAppReview = InAppReview.instance;
+    if (await inAppReview.isAvailable()) {
+      inAppReview.requestReview();
+    } else {
+      // Fallback: open store listing
+      inAppReview.openStoreListing();
+    }
+  }
+}

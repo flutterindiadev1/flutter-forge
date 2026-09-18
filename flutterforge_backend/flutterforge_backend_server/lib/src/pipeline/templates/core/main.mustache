@@ -1,7 +1,25 @@
-
 import 'bootstrap.dart';
 import 'app/app.dart';
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+{{/isProvider}}
 
 void main() {
+  {{#isRiverpod}}
+  bootstrap(() => const ProviderScope(child: App()));
+  {{/isRiverpod}}
+  {{#isProvider}}
+  bootstrap(() => MultiProvider(
+    providers: [
+      // Add global providers here if needed
+    ],
+    child: const App(),
+  ));
+  {{/isProvider}}
+  {{#isBloc}}
   bootstrap(() => const App());
+  {{/isBloc}}
 }

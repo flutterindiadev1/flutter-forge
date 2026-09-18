@@ -1,0 +1,24 @@
+import 'package:flutter/foundation.dart';
+import '../../domain/usecases/{{slug}}_usecase.dart';
+import '{{slug}}_state.dart';
+
+class {{className}}Provider extends ChangeNotifier {
+  final {{className}}UseCase _usecase;
+
+  {{className}}State _state = {{className}}Initial();
+  {{className}}State get state => _state;
+
+  {{className}}Provider(this._usecase);
+
+  Future<void> load() async {
+    _state = {{className}}Loading();
+    notifyListeners();
+    try {
+      final result = await _usecase();
+      _state = {{className}}Loaded(result);
+    } catch (e) {
+      _state = {{className}}Error(e.toString());
+    }
+    notifyListeners();
+  }
+}

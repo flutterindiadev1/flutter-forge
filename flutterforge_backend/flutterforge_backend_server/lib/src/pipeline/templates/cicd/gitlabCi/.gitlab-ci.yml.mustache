@@ -1,0 +1,68 @@
+image: cirrusci/flutter:latest
+
+stages:
+  {{#runTestsOnPr}}
+  - test
+  {{/runTestsOnPr}}
+  {{#deployToFirebaseAppDistribution}}
+  - distribute
+  {{/deployToFirebaseAppDistribution}}
+  {{#deployToStores}}
+  - deploy
+  {{/deployToStores}}
+
+{{#runTestsOnPr}}
+test:
+  stage: test
+  script:
+    - flutter pub get
+    - flutter test
+  only:
+    - merge_requests
+    - main
+    - master
+{{/runTestsOnPr}}
+
+{{#deployToFirebaseAppDistribution}}
+distribute_ios:
+  stage: distribute
+  tags:
+    - macos
+  script:
+    - flutter pub get
+    - cd ios && fastlane ios distribute
+  only:
+    - main
+    - master
+
+distribute_android:
+  stage: distribute
+  script:
+    - flutter pub get
+    - cd android && fastlane android distribute
+  only:
+    - main
+    - master
+{{/deployToFirebaseAppDistribution}}
+
+{{#deployToStores}}
+deploy_ios:
+  stage: deploy
+  tags:
+    - macos
+  script:
+    - flutter pub get
+    - cd ios && fastlane ios release
+  only:
+    - main
+    - master
+
+deploy_android:
+  stage: deploy
+  script:
+    - flutter pub get
+    - cd android && fastlane android release
+  only:
+    - main
+    - master
+{{/deployToStores}}

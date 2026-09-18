@@ -1,0 +1,29 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/injection.dart';
+import '../../domain/usecases/{{slug}}_usecase.dart';
+import '{{slug}}_state.dart';
+
+final {{camelCaseName}}NotifierProvider = NotifierProvider<{{className}}Notifier, {{className}}State>(() {
+  return {{className}}Notifier(getIt());
+});
+
+class {{className}}Notifier extends Notifier<{{className}}State> {
+  final {{className}}UseCase _usecase;
+
+  {{className}}Notifier(this._usecase);
+
+  @override
+  {{className}}State build() {
+    return {{className}}Initial();
+  }
+
+  Future<void> load() async {
+    state = {{className}}Loading();
+    try {
+      final result = await _usecase();
+      state = {{className}}Loaded(result);
+    } catch (e) {
+      state = {{className}}Error(e.toString());
+    }
+  }
+}

@@ -1,0 +1,15 @@
+import '../../domain/entities/subscription_entity.dart';
+
+abstract class PaywallState {}
+
+class PaywallInitial extends PaywallState {}
+class PaywallLoading extends PaywallState {}
+class PaywallLoaded extends PaywallState {
+  final List<SubscriptionEntity> offerings;
+  PaywallLoaded(this.offerings);
+}
+class PaywallSuccess extends PaywallState {}
+class PaywallError extends PaywallState {
+  final String message;
+  PaywallError(this.message);
+}

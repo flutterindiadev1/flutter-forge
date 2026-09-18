@@ -1,16 +1,190 @@
 import 'package:flutter/material.dart';
+{{#isBloc}}
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/paywall_cubit.dart';
-import '../cubit/paywall_state.dart';
+import '../bloc/paywall_cubit.dart';
+import '../bloc/paywall_state.dart';
 import '../../../../core/di/injection.dart';
+{{/isBloc}}
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../riverpod/paywall_notifier.dart';
+import '../riverpod/paywall_state.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+import '../provider/paywall_provider.dart';
+import '../provider/paywall_state.dart';
+{{/isProvider}}
 
+{{#isRiverpod}}
+class PaywallScreen extends ConsumerStatefulWidget {
+  const PaywallScreen({super.key});
+
+  @override
+  ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
+}
+
+class _PaywallScreenState extends ConsumerState<PaywallScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(paywallNotifierProvider.notifier).loadOfferings();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<PaywallState>(paywallNotifierProvider, (previous, state) {
+      if (state is PaywallSuccess) {
+        Navigator.of(context).pop(true);
+      } else if (state is PaywallError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message)),
+        );
+      }
+    });
+
+    final state = ref.watch(paywallNotifierProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Upgrade to Premium'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: _buildBody(state, context),
+    );
+  }
+
+  Widget _buildBody(PaywallState state, BuildContext context) {
+    if (state is PaywallLoading || state is PaywallInitial) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state is PaywallLoaded) {
+      return Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Text(
+              'Unlock all premium features!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: state.offerings.length,
+              itemBuilder: (context, index) {
+                final pkg = state.offerings[index];
+                return ListTile(
+                  title: Text(pkg.title),
+                  subtitle: Text(pkg.description),
+                  trailing: Text(pkg.price),
+                  onTap: () => ref.read(paywallNotifierProvider.notifier).purchase(pkg.rawPackage),
+                );
+              },
+            ),
+          ),
+          TextButton(
+            onPressed: () => ref.read(paywallNotifierProvider.notifier).restore(),
+            child: const Text('Restore Purchases'),
+          ),
+          const SizedBox(height: 32),
+        ],
+      );
+    }
+    return const Center(child: Text('Failed to load subscriptions.'));
+  }
+}
+{{/isRiverpod}}
+
+{{#isProvider}}
+class PaywallScreen extends StatefulWidget {
+  const PaywallScreen({super.key});
+
+  @override
+  State<PaywallScreen> createState() => _PaywallScreenState();
+}
+
+class _PaywallScreenState extends State<PaywallScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PaywallProvider>().loadOfferings();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Upgrade to Premium'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Consumer<PaywallProvider>(
+        builder: (context, provider, child) {
+          final state = provider.state;
+          // Note: Listening for navigation should be handled via a listener or callbacks in a real app,
+          // but for scaffolding we keep it simple.
+          if (state is PaywallLoading || state is PaywallInitial) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is PaywallLoaded) {
+            return Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Text(
+                    'Unlock all premium features!',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: state.offerings.length,
+                    itemBuilder: (context, index) {
+                      final pkg = state.offerings[index];
+                      return ListTile(
+                        title: Text(pkg.title),
+                        subtitle: Text(pkg.description),
+                        trailing: Text(pkg.price),
+                        onTap: () => context.read<PaywallProvider>().purchase(pkg.rawPackage),
+                      );
+                    },
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.read<PaywallProvider>().restore(),
+                  child: const Text('Restore Purchases'),
+                ),
+                const SizedBox(height: 32),
+              ],
+            );
+          }
+          return const Center(child: Text('Failed to load subscriptions.'));
+        },
+      ),
+    );
+  }
+}
+{{/isProvider}}
+
+{{#isBloc}}
 class PaywallScreen extends StatelessWidget {
   const PaywallScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<PaywallCubit>()..loadOfferings(),
+      create: (_) => getIt<PaywallCubit>()..loadOfferings(),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Upgrade to Premium'),
@@ -73,3 +247,4 @@ class PaywallScreen extends StatelessWidget {
     );
   }
 }
+{{/isBloc}}

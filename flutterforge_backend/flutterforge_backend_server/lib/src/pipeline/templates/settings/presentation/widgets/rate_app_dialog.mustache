@@ -1,7 +1,45 @@
 import 'package:flutter/material.dart';
+{{#isBloc}}
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/settings_cubit.dart';
+import '../bloc/settings_cubit.dart';
+{{/isBloc}}
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../riverpod/settings_notifier.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+import '../provider/settings_provider.dart';
+{{/isProvider}}
 
+{{#isRiverpod}}
+class RateAppDialog extends ConsumerWidget {
+  const RateAppDialog({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AlertDialog(
+      title: const Text('Enjoying the app?'),
+      content: const Text('Would you mind taking a moment to rate it? It helps us a lot!'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('No thanks'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            ref.read(settingsNotifierProvider.notifier).requestReview();
+            Navigator.of(context).pop();
+          },
+          child: const Text('Rate App'),
+        ),
+      ],
+    );
+  }
+}
+{{/isRiverpod}}
+
+{{^isRiverpod}}
 class RateAppDialog extends StatelessWidget {
   const RateAppDialog({super.key});
 
@@ -17,7 +55,12 @@ class RateAppDialog extends StatelessWidget {
         ),
         ElevatedButton(
           onPressed: () {
+            {{#isBloc}}
             context.read<SettingsCubit>().requestReview();
+            {{/isBloc}}
+            {{#isProvider}}
+            context.read<SettingsProvider>().requestReview();
+            {{/isProvider}}
             Navigator.of(context).pop();
           },
           child: const Text('Rate App'),
@@ -26,3 +69,4 @@ class RateAppDialog extends StatelessWidget {
     );
   }
 }
+{{/isRiverpod}}

@@ -1,0 +1,33 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/injection.dart';
+import '../../domain/usecases/check_onboarded_usecase.dart';
+import 'onboarding_state.dart';
+
+final onboardingNotifierProvider = NotifierProvider<OnboardingNotifier, OnboardingState>(() {
+  return OnboardingNotifier(getIt());
+});
+
+class OnboardingNotifier extends Notifier<OnboardingState> {
+  final CheckOnboardedUseCase _checkOnboardedUseCase;
+
+  OnboardingNotifier(this._checkOnboardedUseCase);
+
+  @override
+  OnboardingState build() {
+    return OnboardingInitial();
+  }
+
+  void checkStatus() {
+    final hasSeen = _checkOnboardedUseCase();
+    if (hasSeen) {
+      state = OnboardingCompleted();
+    } else {
+      state = OnboardingPending();
+    }
+  }
+
+  Future<void> complete() async {
+    await _checkOnboardedUseCase.completeOnboarding();
+    state = OnboardingCompleted();
+  }
+}

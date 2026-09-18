@@ -41,7 +41,7 @@ class RevenueCatDataSourceImpl implements RevenueCatDataSource {
   @override
   Future<bool> purchasePackage(Package package) async {
     try {
-      final result = await Purchases.purchasePackage(package);
+      final result = await Purchases.purchase(PurchaseParams.package(package));
       return result.customerInfo.entitlements.all[_entitlementId]?.isActive == true;
     } catch (e) {
       return false;

@@ -28,8 +28,22 @@ class FeatureScaffolder {
       return;
     }
 
+    final sm = config.architecture?.stateManagement?.toLowerCase() ?? 'bloc';
+    final isBloc = sm == 'bloc';
+    final isRiverpod = sm == 'riverpod';
+    final isProvider = sm == 'provider';
+
     final entities = await templatesDir.list(recursive: true).toList();
-    final templateFiles = entities.whereType<File>().where((e) => e.path.endsWith('.mustache')).toList();
+    final templateFiles = entities.whereType<File>().where((e) {
+      if (!e.path.endsWith('.mustache')) return false;
+      final pathStr = e.path;
+      if (pathStr.contains('/presentation/')) {
+        if (pathStr.contains('/bloc/') && !isBloc) return false;
+        if (pathStr.contains('/riverpod/') && !isRiverpod) return false;
+        if (pathStr.contains('/provider/') && !isProvider) return false;
+      }
+      return true;
+    }).toList();
 
     int totalTasks = customFeatures.length * templateFiles.length;
     int processed = 0;
@@ -43,11 +57,18 @@ class FeatureScaffolder {
         return word[0].toUpperCase() + word.substring(1).toLowerCase();
       }).join('');
 
+      // camelCase for variable names
+      final camelCaseName = className[0].toLowerCase() + className.substring(1);
+
       final data = {
         'projectName': config.projectName,
         'slug': slug,
         'className': className,
+        'camelCaseName': camelCaseName,
         'hasNetwork': config.architecture?.network == 'dio' || config.architecture?.network == 'http',
+        'isBloc': isBloc,
+        'isRiverpod': isRiverpod,
+        'isProvider': isProvider,
       };
 
       for (var templateFile in templateFiles) {

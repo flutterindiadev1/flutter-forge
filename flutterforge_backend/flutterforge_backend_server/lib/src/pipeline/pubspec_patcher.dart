@@ -53,7 +53,6 @@ class PubspecPatcher {
       await l10nFile.writeAsString('''
 arb-dir: lib/l10n
 template-arb-file: app_${config.localization.defaultLanguage}.arb
-output-localization-file: app_localizations.dart
 ''');
 
       // Generate base arb files

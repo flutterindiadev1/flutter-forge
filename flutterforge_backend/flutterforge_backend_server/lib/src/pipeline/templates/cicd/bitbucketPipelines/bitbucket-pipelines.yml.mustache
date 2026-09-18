@@ -1,0 +1,32 @@
+image: cirrusci/flutter:latest
+
+pipelines:
+  default:
+    - step:
+        name: Run Tests
+        script:
+          - flutter pub get
+          - flutter test
+  branches:
+    main:
+      {{#runTestsOnPr}}
+      - step:
+          name: Run Tests
+          script:
+            - flutter pub get
+            - flutter test
+      {{/runTestsOnPr}}
+      {{#deployToFirebaseAppDistribution}}
+      - step:
+          name: Distribute Android
+          script:
+            - flutter pub get
+            - cd android && fastlane android distribute
+      {{/deployToFirebaseAppDistribution}}
+      {{#deployToStores}}
+      - step:
+          name: Deploy Android to Play Store
+          script:
+            - flutter pub get
+            - cd android && fastlane android release
+      {{/deployToStores}}

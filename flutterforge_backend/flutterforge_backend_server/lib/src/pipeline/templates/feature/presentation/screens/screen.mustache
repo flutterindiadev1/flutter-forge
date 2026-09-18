@@ -1,17 +1,109 @@
 import 'package:flutter/material.dart';
+{{#isBloc}}
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/{{slug}}_bloc.dart';
 import '../bloc/{{slug}}_event.dart';
 import '../bloc/{{slug}}_state.dart';
 import '../../../../core/di/injection.dart';
+{{/isBloc}}
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../riverpod/{{slug}}_notifier.dart';
+import '../riverpod/{{slug}}_state.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+import '../provider/{{slug}}_provider.dart';
+import '../provider/{{slug}}_state.dart';
+{{/isProvider}}
 
+{{#isRiverpod}}
+class {{className}}Screen extends ConsumerStatefulWidget {
+  const {{className}}Screen({super.key});
+
+  @override
+  ConsumerState<{{className}}Screen> createState() => _{{className}}ScreenState();
+}
+
+class _{{className}}ScreenState extends ConsumerState<{{className}}Screen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read({{camelCaseName}}NotifierProvider.notifier).load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch({{camelCaseName}}NotifierProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('{{className}}')),
+      body: _buildBody(state),
+    );
+  }
+
+  Widget _buildBody({{className}}State state) {
+    if (state is {{className}}Loading) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (state is {{className}}Loaded) {
+      return Center(child: Text('Loaded: ${state.data.id}'));
+    } else if (state is {{className}}Error) {
+      return Center(child: Text('Error: ${state.message}'));
+    }
+    return const Center(child: Text('Welcome to {{className}}'));
+  }
+}
+{{/isRiverpod}}
+
+{{#isProvider}}
+class {{className}}Screen extends StatefulWidget {
+  const {{className}}Screen({super.key});
+
+  @override
+  State<{{className}}Screen> createState() => _{{className}}ScreenState();
+}
+
+class _{{className}}ScreenState extends State<{{className}}Screen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<{{className}}Provider>().load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('{{className}}')),
+      body: Consumer<{{className}}Provider>(
+        builder: (context, provider, child) {
+          final state = provider.state;
+          if (state is {{className}}Loading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is {{className}}Loaded) {
+            return Center(child: Text('Loaded: ${state.data.id}'));
+          } else if (state is {{className}}Error) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
+          return const Center(child: Text('Welcome to {{className}}'));
+        },
+      ),
+    );
+  }
+}
+{{/isProvider}}
+
+{{#isBloc}}
 class {{className}}Screen extends StatelessWidget {
   const {{className}}Screen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<{{className}}Bloc>()..add(Load{{className}}()),
+      create: (_) => getIt<{{className}}Bloc>()..add(Load{{className}}()),
       child: Scaffold(
         appBar: AppBar(title: const Text('{{className}}')),
         body: BlocBuilder<{{className}}Bloc, {{className}}State>(
@@ -30,3 +122,4 @@ class {{className}}Screen extends StatelessWidget {
     );
   }
 }
+{{/isBloc}}

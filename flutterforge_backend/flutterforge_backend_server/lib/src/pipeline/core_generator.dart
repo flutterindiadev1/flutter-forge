@@ -29,6 +29,12 @@ class CoreGenerator {
     final hasOnboarding = config.features.any((f) => f.name.toLowerCase() == 'onboarding');
     final hasFirebase = config.integrations.firebaseAuth || config.integrations.firebaseFirestore || config.integrations.firebaseCrashlytics;
     final hasCrashlytics = config.integrations.firebaseCrashlytics;
+    final hasLocalization = config.localization.targetLanguages.length > 1;
+
+    final sm = config.architecture?.stateManagement?.toLowerCase() ?? 'bloc';
+    final isBloc = sm == 'bloc';
+    final isRiverpod = sm == 'riverpod';
+    final isProvider = sm == 'provider';
 
     final data = {
       'projectName': config.projectName,
@@ -38,8 +44,12 @@ class CoreGenerator {
       'hasOnboarding': hasOnboarding,
       'hasFirebase': hasFirebase,
       'hasCrashlytics': hasCrashlytics,
+      'hasLocalization': hasLocalization,
       'apiBaseUrl': 'https://api.example.com',
       'primaryColor': '0xFF6200EE',
+      'isBloc': isBloc,
+      'isRiverpod': isRiverpod,
+      'isProvider': isProvider,
     };
 
     final entities = await templatesDir.list(recursive: true).toList();

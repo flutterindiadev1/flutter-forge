@@ -1,0 +1,37 @@
+default_platform(:android)
+
+platform :ios do
+  desc "Push a new beta build to Firebase App Distribution"
+  lane :distribute do
+    build_app(scheme: "{{projectName}}")
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID_IOS"],
+      groups: "testers"
+    )
+  end
+
+  desc "Push a new release build to the App Store"
+  lane :release do
+    build_app(scheme: "{{projectName}}")
+    upload_to_app_store(
+      force: true
+    )
+  end
+end
+
+platform :android do
+  desc "Push a new beta build to Firebase App Distribution"
+  lane :distribute do
+    gradle(task: "clean assembleRelease")
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID_ANDROID"],
+      groups: "testers"
+    )
+  end
+
+  desc "Deploy a new version to the Google Play Store"
+  lane :release do
+    gradle(task: "clean bundleRelease")
+    upload_to_play_store
+  end
+end

@@ -19,10 +19,18 @@ class PaywallGenerator {
       return;
     }
 
+    final sm = config.architecture?.stateManagement?.toLowerCase() ?? 'bloc';
+    final isBloc = sm == 'bloc';
+    final isRiverpod = sm == 'riverpod';
+    final isProvider = sm == 'provider';
+
     final data = {
       'projectName': config.projectName,
       'revenueCatApiKey': 'TODO_REVENUECAT_API_KEY', // User will replace this
       'entitlementId': 'premium',
+      'isBloc': isBloc,
+      'isRiverpod': isRiverpod,
+      'isProvider': isProvider,
     };
 
     final entities = await templatesDir.list(recursive: true).toList();
@@ -31,7 +39,14 @@ class PaywallGenerator {
 
     for (var entity in entities) {
       if (entity is File && entity.path.endsWith('.mustache')) {
-        final relativePath = entity.path.replaceFirst(templatesDir.path, '');
+        final pathStr = entity.path;
+        if (pathStr.contains('/presentation/')) {
+          if (pathStr.contains('/bloc/') && !isBloc) continue;
+          if (pathStr.contains('/riverpod/') && !isRiverpod) continue;
+          if (pathStr.contains('/provider/') && !isProvider) continue;
+        }
+
+        final relativePath = pathStr.replaceFirst(templatesDir.path, '');
         final cleanPath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
         
         final destPath = cleanPath.replaceAll('.mustache', '.dart');

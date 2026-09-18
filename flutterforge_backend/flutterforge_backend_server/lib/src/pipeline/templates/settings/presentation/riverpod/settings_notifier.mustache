@@ -1,0 +1,24 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'settings_state.dart';
+
+final settingsNotifierProvider = NotifierProvider<SettingsNotifier, SettingsState>(() {
+  return SettingsNotifier();
+});
+
+class SettingsNotifier extends Notifier<SettingsState> {
+  @override
+  SettingsState build() {
+    return SettingsInitial();
+  }
+
+  Future<void> requestReview() async {
+    final InAppReview inAppReview = InAppReview.instance;
+    if (await inAppReview.isAvailable()) {
+      inAppReview.requestReview();
+    } else {
+      // Fallback: open store listing
+      inAppReview.openStoreListing();
+    }
+  }
+}

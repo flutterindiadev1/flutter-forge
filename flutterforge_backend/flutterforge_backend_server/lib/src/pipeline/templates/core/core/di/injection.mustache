@@ -14,7 +14,12 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/sign_in_usecase.dart';
 import '../../features/auth/domain/usecases/sign_out_usecase.dart';
-import '../../features/auth/presentation/cubit/auth_cubit.dart';
+{{#isBloc}}
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+{{/isBloc}}
+{{#isProvider}}
+import '../../features/auth/presentation/provider/auth_provider.dart';
+{{/isProvider}}
 {{/hasAuth}}
 
 {{#features}}
@@ -22,36 +27,51 @@ import '../../features/{{slug}}/data/datasources/{{slug}}_remote_datasource.dart
 import '../../features/{{slug}}/data/repositories/{{slug}}_repository_impl.dart';
 import '../../features/{{slug}}/domain/repositories/{{slug}}_repository.dart';
 import '../../features/{{slug}}/domain/usecases/{{slug}}_usecase.dart';
+{{#isBloc}}
 import '../../features/{{slug}}/presentation/bloc/{{slug}}_bloc.dart';
+{{/isBloc}}
+{{#isProvider}}
+import '../../features/{{slug}}/presentation/provider/{{slug}}_provider.dart';
+{{/isProvider}}
 {{/features}}
 
-final sl = GetIt.instance;
+final getIt = GetIt.instance;
 
 Future<void> init() async {
   // Core
   {{#hasNetwork}}
-  sl.registerLazySingleton(() => Dio());
-  sl.registerLazySingleton(() => ApiClient(sl()));
+  getIt.registerLazySingleton(() => Dio());
+  getIt.registerLazySingleton(() => ApiClient(getIt()));
   {{/hasNetwork}}
   {{#hasLocalStorage}}
-  sl.registerLazySingleton<LocalStorage>(() => LocalStorageImpl());
+  getIt.registerLazySingleton<LocalStorage>(() => LocalStorageImpl());
   {{/hasLocalStorage}}
 
   // Modules
   {{#hasAuth}}
   // Auth
-  sl.registerFactory(() => AuthCubit(sl(), sl()));
-  sl.registerLazySingleton(() => SignInUseCase(sl()));
-  sl.registerLazySingleton(() => SignOutUseCase(sl()));
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
-  sl.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSourceImpl());
+  {{#isBloc}}
+  getIt.registerFactory(() => AuthBloc(getIt(), getIt()));
+  {{/isBloc}}
+  {{#isProvider}}
+  getIt.registerFactory(() => AuthProvider(getIt(), getIt()));
+  {{/isProvider}}
+  getIt.registerLazySingleton(() => SignInUseCase(getIt()));
+  getIt.registerLazySingleton(() => SignOutUseCase(getIt()));
+  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(getIt()));
+  getIt.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSourceImpl());
   {{/hasAuth}}
 
   {{#features}}
   // {{className}}
-  sl.registerFactory(() => {{className}}Bloc(sl()));
-  sl.registerLazySingleton(() => {{className}}UseCase(sl()));
-  sl.registerLazySingleton<{{className}}Repository>(() => {{className}}RepositoryImpl(sl()));
-  sl.registerLazySingleton<{{className}}RemoteDataSource>(() => {{className}}RemoteDataSourceImpl(sl()));
+  {{#isBloc}}
+  getIt.registerFactory(() => {{className}}Bloc(getIt()));
+  {{/isBloc}}
+  {{#isProvider}}
+  getIt.registerFactory(() => {{className}}Provider(getIt()));
+  {{/isProvider}}
+  getIt.registerLazySingleton(() => {{className}}UseCase(getIt()));
+  getIt.registerLazySingleton<{{className}}Repository>(() => {{className}}RepositoryImpl(getIt()));
+  getIt.registerLazySingleton<{{className}}RemoteDataSource>(() => {{className}}RemoteDataSourceImpl(getIt()));
   {{/features}}
 }

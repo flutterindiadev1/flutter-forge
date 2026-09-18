@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+{{#isBloc}}
 import 'package:flutter_bloc/flutter_bloc.dart';
+{{/isBloc}}
 {{#hasCrashlytics}}
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 {{/hasCrashlytics}}
@@ -9,6 +11,7 @@ import 'package:firebase_core/firebase_core.dart';
 {{/hasFirebase}}
 import 'core/di/injection.dart' as di;
 
+{{#isBloc}}
 class AppBlocObserver extends BlocObserver {
   @override
   void onChange(BlocBase bloc, Change change) {
@@ -22,6 +25,7 @@ class AppBlocObserver extends BlocObserver {
     super.onError(bloc, error, stackTrace);
   }
 }
+{{/isBloc}}
 
 Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +39,9 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   
   await di.init();
   
+  {{#isBloc}}
   Bloc.observer = AppBlocObserver();
+  {{/isBloc}}
   
   runApp(await builder());
 }

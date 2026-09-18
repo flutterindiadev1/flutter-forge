@@ -1,23 +1,72 @@
 import 'package:flutter/material.dart';
+{{#isBloc}}
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../cubit/auth_cubit.dart';
-import '../cubit/auth_state.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
 import '../../../../core/di/injection.dart';
+{{/isBloc}}
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../riverpod/auth_notifier.dart';
+import '../riverpod/auth_state.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+import '../provider/auth_provider.dart';
+import '../provider/auth_state.dart';
+{{/isProvider}}
 
+{{#isRiverpod}}
+class SignupScreen extends ConsumerWidget {
+  const SignupScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AuthState>(authNotifierProvider, (previous, state) {
+      if (state is Authenticated) {
+        // context.go('/home');
+      } else if (state is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message)),
+        );
+      }
+    });
+
+    final state = ref.watch(authNotifierProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sign Up')),
+      body: state is AuthLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : const _SignupForm(),
+    );
+  }
+}
+
+class _SignupForm extends ConsumerStatefulWidget {
+  const _SignupForm();
+  
+  @override
+  ConsumerState<_SignupForm> createState() => _SignupFormState();
+}
+
+class _SignupFormState extends ConsumerState<_SignupForm> {
+{{/isRiverpod}}
+{{#isBloc}}
 class SignupScreen extends StatelessWidget {
   const SignupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<AuthCubit>(),
+      create: (_) => getIt<AuthBloc>(),
       child: Scaffold(
         appBar: AppBar(title: const Text('Sign Up')),
-        body: BlocConsumer<AuthCubit, AuthState>(
+        body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is Authenticated) {
-              // Navigate to home
+              // Navigate to home or dashboard
               // context.go('/home');
             } else if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -45,6 +94,37 @@ class _SignupForm extends StatefulWidget {
 }
 
 class _SignupFormState extends State<_SignupForm> {
+{{/isBloc}}
+{{#isProvider}}
+class SignupScreen extends StatelessWidget {
+  const SignupScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sign Up')),
+      body: Consumer<AuthProvider>(
+        builder: (context, provider, child) {
+          final state = provider.state;
+          if (state is AuthLoading) {
+             return const Center(child: CircularProgressIndicator());
+          }
+          return const _SignupForm();
+        },
+      ),
+    );
+  }
+}
+
+class _SignupForm extends StatefulWidget {
+  const _SignupForm();
+  
+  @override
+  State<_SignupForm> createState() => _SignupFormState();
+}
+
+class _SignupFormState extends State<_SignupForm> {
+{{/isProvider}}
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -68,8 +148,13 @@ class _SignupFormState extends State<_SignupForm> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
-              // Implement signup logic in AuthCubit if added
-              // context.read<AuthCubit>().signUp(...)
+              // Implement signup logic here or in state manager
+              {{#isBloc}}
+              // context.read<AuthBloc>().add(SignUpEvent(
+              //   _emailController.text,
+              //   _passwordController.text,
+              // ));
+              {{/isBloc}}
             },
             child: const Text('Sign Up'),
           ),

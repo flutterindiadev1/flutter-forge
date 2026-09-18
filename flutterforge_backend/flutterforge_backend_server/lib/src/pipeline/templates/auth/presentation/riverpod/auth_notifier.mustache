@@ -1,0 +1,41 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/injection.dart';
+import '../../domain/usecases/sign_in_usecase.dart';
+import '../../domain/usecases/sign_out_usecase.dart';
+import 'auth_state.dart';
+
+final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(() {
+  return AuthNotifier(getIt(), getIt());
+});
+
+class AuthNotifier extends Notifier<AuthState> {
+  final SignInUseCase _signInUseCase;
+  final SignOutUseCase _signOutUseCase;
+
+  AuthNotifier(this._signInUseCase, this._signOutUseCase);
+
+  @override
+  AuthState build() {
+    return AuthInitial();
+  }
+
+  Future<void> signIn(String email, String password) async {
+    state = AuthLoading();
+    try {
+      final user = await _signInUseCase(SignInParams(email: email, password: password));
+      state = Authenticated(user);
+    } catch (e) {
+      state = AuthError(e.toString());
+    }
+  }
+
+  Future<void> signOut() async {
+    state = AuthLoading();
+    try {
+      await _signOutUseCase();
+      state = Unauthenticated();
+    } catch (e) {
+      state = AuthError(e.toString());
+    }
+  }
+}

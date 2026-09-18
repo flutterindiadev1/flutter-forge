@@ -1,0 +1,56 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../../../core/di/injection.dart';
+import '../../data/datasources/revenuecat_datasource.dart';
+import 'paywall_state.dart';
+
+final paywallNotifierProvider = NotifierProvider<PaywallNotifier, PaywallState>(() {
+  return PaywallNotifier(getIt());
+});
+
+class PaywallNotifier extends Notifier<PaywallState> {
+  final RevenueCatDataSource _dataSource;
+
+  PaywallNotifier(this._dataSource);
+
+  @override
+  PaywallState build() {
+    return PaywallInitial();
+  }
+
+  Future<void> loadOfferings() async {
+    state = PaywallLoading();
+    try {
+      final offerings = await _dataSource.getOfferings();
+      if (offerings.isEmpty) {
+        state = PaywallError('No subscription plans available');
+      } else {
+        state = PaywallLoaded(offerings);
+      }
+    } catch (e) {
+      state = PaywallError(e.toString());
+    }
+  }
+
+  Future<void> purchase(Package package) async {
+    state = PaywallLoading();
+    final success = await _dataSource.purchasePackage(package);
+    if (success) {
+      state = PaywallSuccess();
+    } else {
+      state = PaywallError('Purchase failed or cancelled');
+      loadOfferings(); // Reload to show plans again
+    }
+  }
+
+  Future<void> restore() async {
+    state = PaywallLoading();
+    final success = await _dataSource.restorePurchases();
+    if (success) {
+      state = PaywallSuccess();
+    } else {
+      state = PaywallError('No active subscriptions found to restore');
+      loadOfferings();
+    }
+  }
+}

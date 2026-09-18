@@ -1,0 +1,28 @@
+import 'package:flutter/foundation.dart';
+import '../../domain/usecases/check_onboarded_usecase.dart';
+import 'onboarding_state.dart';
+
+class OnboardingProvider extends ChangeNotifier {
+  final CheckOnboardedUseCase _checkOnboardedUseCase;
+
+  OnboardingState _state = OnboardingInitial();
+  OnboardingState get state => _state;
+
+  OnboardingProvider(this._checkOnboardedUseCase);
+
+  void checkStatus() {
+    final hasSeen = _checkOnboardedUseCase();
+    if (hasSeen) {
+      _state = OnboardingCompleted();
+    } else {
+      _state = OnboardingPending();
+    }
+    notifyListeners();
+  }
+
+  Future<void> complete() async {
+    await _checkOnboardedUseCase.completeOnboarding();
+    _state = OnboardingCompleted();
+    notifyListeners();
+  }
+}

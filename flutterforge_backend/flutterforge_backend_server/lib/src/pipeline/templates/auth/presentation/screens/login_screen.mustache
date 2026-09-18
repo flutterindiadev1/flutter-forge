@@ -1,20 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../cubit/auth_cubit.dart';
-import '../cubit/auth_state.dart';
+{{#isBloc}}
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
 import '../../../../core/di/injection.dart';
+{{/isBloc}}
+{{#isRiverpod}}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../riverpod/auth_notifier.dart';
+import '../riverpod/auth_state.dart';
+{{/isRiverpod}}
+{{#isProvider}}
+import 'package:provider/provider.dart';
+import '../provider/auth_provider.dart';
+import '../provider/auth_state.dart';
+{{/isProvider}}
 
+{{#isRiverpod}}
+class LoginScreen extends ConsumerWidget {
+  const LoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AuthState>(authNotifierProvider, (previous, state) {
+      if (state is Authenticated) {
+        // context.go('/home');
+      } else if (state is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message)),
+        );
+      }
+    });
+
+    final state = ref.watch(authNotifierProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Login')),
+      body: state is AuthLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : const _LoginForm(),
+    );
+  }
+}
+
+class _LoginForm extends ConsumerStatefulWidget {
+  const _LoginForm();
+  
+  @override
+  ConsumerState<_LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends ConsumerState<_LoginForm> {
+{{/isRiverpod}}
+{{#isBloc}}
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<AuthCubit>(),
+      create: (_) => getIt<AuthBloc>(),
       child: Scaffold(
         appBar: AppBar(title: const Text('Login')),
-        body: BlocConsumer<AuthCubit, AuthState>(
+        body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is Authenticated) {
               // Navigate to home or dashboard
@@ -45,6 +95,37 @@ class _LoginForm extends StatefulWidget {
 }
 
 class _LoginFormState extends State<_LoginForm> {
+{{/isBloc}}
+{{#isProvider}}
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Login')),
+      body: Consumer<AuthProvider>(
+        builder: (context, provider, child) {
+          final state = provider.state;
+          if (state is AuthLoading) {
+             return const Center(child: CircularProgressIndicator());
+          }
+          return const _LoginForm();
+        },
+      ),
+    );
+  }
+}
+
+class _LoginForm extends StatefulWidget {
+  const _LoginForm();
+  
+  @override
+  State<_LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends State<_LoginForm> {
+{{/isProvider}}
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -68,10 +149,24 @@ class _LoginFormState extends State<_LoginForm> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
-              context.read<AuthCubit>().signIn(
+              {{#isBloc}}
+              context.read<AuthBloc>().add(SignInEvent(
+                _emailController.text,
+                _passwordController.text,
+              ));
+              {{/isBloc}}
+              {{#isRiverpod}}
+              ref.read(authNotifierProvider.notifier).signIn(
                 _emailController.text,
                 _passwordController.text,
               );
+              {{/isRiverpod}}
+              {{#isProvider}}
+              context.read<AuthProvider>().signIn(
+                _emailController.text,
+                _passwordController.text,
+              );
+              {{/isProvider}}
             },
             child: const Text('Sign In'),
           ),
