@@ -45,7 +45,7 @@ class ScaffoldGenerator {
 
     if (config.platforms.isNotEmpty) {
       args.add('--platforms');
-      args.add(config.platforms.join(','));
+      args.add(config.platforms.map((p) => p.toLowerCase()).join(','));
     }
 
     yield ScaffoldEvent(message: 'Running flutter create...', progress: 0.2);

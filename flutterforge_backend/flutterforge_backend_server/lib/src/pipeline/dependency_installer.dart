@@ -18,68 +18,110 @@ class DependencyEvent {
 
 class DependencyInstaller {
   Stream<DependencyEvent> install(ProjectConfig config) async* {
-    yield DependencyEvent(message: 'Installing dependencies...', progress: 0.0);
+    yield DependencyEvent(message: 'Resolving dependencies...', progress: 0.0);
     
     final projectId = config.projectId ?? 'unknown_project';
     final projectDir = Directory('/tmp/flutterforge/$projectId');
     
-    if (config.dependencies.isEmpty) {
-      yield DependencyEvent(message: 'No extra dependencies to install.', progress: 1.0);
+    final Set<String> packages = {};
+    
+    // 1. Explicit Dependencies
+    for (final dep in config.dependencies) {
+      packages.add(dep.version != null ? '${dep.packageName}:${dep.version}' : dep.packageName);
+    }
+    
+    // 2. Architecture & State Management
+    final arch = config.architecture;
+    if (arch != null) {
+      // State Management
+      if (arch.stateManagement == 'bloc') packages.addAll(['flutter_bloc', 'equatable']);
+      if (arch.stateManagement == 'riverpod') packages.addAll(['flutter_riverpod']);
+      if (arch.stateManagement == 'provider') packages.addAll(['provider']);
+      
+      // DI
+      if (arch.di == 'get_it') packages.addAll(['get_it']);
+      if (arch.di == 'injectable') packages.addAll(['get_it', 'injectable']); // Note: needs dev_dependencies too
+      
+      // Navigation
+      if (arch.navigation == 'go_router') packages.addAll(['go_router']);
+      if (arch.navigation == 'auto_route') packages.addAll(['auto_route']); // Note: needs dev_dependencies
+      
+      // Network
+      if (arch.network == 'dio') packages.addAll(['dio']);
+      if (arch.network == 'http') packages.addAll(['http']);
+      
+      // Storage
+      if (arch.localStorage == 'hive') packages.addAll(['hive', 'hive_flutter']);
+      if (arch.localStorage == 'isar') packages.addAll(['isar', 'isar_flutter_libs']); // Note: needs dev_dependencies
+      if (arch.localStorage == 'shared_prefs') packages.addAll(['shared_preferences']);
+    }
+    
+    // 3. Integrations
+    final intg = config.integrations;
+    bool needsFirebaseCore = false;
+    
+    if (intg.firebaseAuth) { packages.add('firebase_auth'); needsFirebaseCore = true; }
+    if (intg.firebaseFirestore) { packages.add('cloud_firestore'); needsFirebaseCore = true; }
+    if (intg.firebaseStorage) { packages.add('firebase_storage'); needsFirebaseCore = true; }
+    if (intg.firebaseAnalytics) { packages.add('firebase_analytics'); needsFirebaseCore = true; }
+    if (intg.firebaseCrashlytics) { packages.add('firebase_crashlytics'); needsFirebaseCore = true; }
+    if (needsFirebaseCore) packages.add('firebase_core');
+    
+    if (intg.stripe) packages.add('flutter_stripe');
+    if (intg.revenueCat) packages.add('purchases_flutter');
+    if (intg.googleMaps) packages.add('google_maps_flutter');
+    if (intg.mapbox) packages.add('mapbox_maps_flutter');
+    
+    if (packages.isEmpty) {
+      yield DependencyEvent(message: 'No dependencies to install.', progress: 1.0);
       return;
     }
 
-    final totalDeps = config.dependencies.length;
-    int currentDep = 0;
+    yield DependencyEvent(
+      message: 'Installing ${packages.length} packages...',
+      progress: 0.1,
+    );
 
-    for (final dep in config.dependencies) {
-      final packageRef = dep.version != null ? '${dep.packageName}:${dep.version}' : dep.packageName;
-      
-      yield DependencyEvent(
-        message: 'Adding $packageRef...',
-        progress: currentDep / totalDeps,
+    try {
+      // Batch install is much faster
+      final args = ['pub', 'add', ...packages];
+      final process = await Process.start(
+        'flutter',
+        args,
+        workingDirectory: projectDir.path,
       );
 
-      try {
-        final process = await Process.start(
-          'flutter',
-          ['pub', 'add', packageRef],
-          workingDirectory: projectDir.path,
-        );
+      // Stream output
+      double currentProgress = 0.1;
+      await for (final line in process.stdout.transform(utf8.decoder).transform(const LineSplitter())) {
+        currentProgress = (currentProgress + 0.05).clamp(0.1, 0.95);
+        yield DependencyEvent(message: '  $line', progress: currentProgress);
+      }
 
-        // We can just await it since pub add is usually fast
-        final exitCode = await process.exitCode;
-        if (exitCode != 0) {
-          final stderrStr = await process.stderr.transform(utf8.decoder).join();
-          yield DependencyEvent(
-            message: 'Failed to add ${dep.packageName}: $stderrStr',
-            level: 'error',
-            progress: 1.0,
-            isError: true,
-          );
-          return;
-        }
-
-        currentDep++;
+      final exitCode = await process.exitCode;
+      if (exitCode != 0) {
+        final stderrStr = await process.stderr.transform(utf8.decoder).join();
         yield DependencyEvent(
-          message: '✓ Added ${dep.packageName}',
-          level: 'success',
-          progress: currentDep / totalDeps,
-        );
-      } catch (e) {
-        yield DependencyEvent(
-          message: 'Error installing ${dep.packageName}: $e',
+          message: 'Failed to add packages: $stderrStr',
           level: 'error',
           progress: 1.0,
           isError: true,
         );
         return;
       }
-    }
 
-    yield DependencyEvent(
-      message: 'All dependencies installed.',
-      level: 'success',
-      progress: 1.0,
-    );
+      yield DependencyEvent(
+        message: 'All dependencies installed successfully.',
+        level: 'success',
+        progress: 1.0,
+      );
+    } catch (e) {
+      yield DependencyEvent(
+        message: 'Error installing packages: $e',
+        level: 'error',
+        progress: 1.0,
+        isError: true,
+      );
+    }
   }
 }

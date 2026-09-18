@@ -29,24 +29,25 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   void _initCodeController(String content, String filePath) {
-    if (_codeController != null && _currentFilePath == filePath && _codeController!.text == content) {
+    if (_codeController != null &&
+        _currentFilePath == filePath &&
+        _codeController!.text == content) {
       return; // Already initialized for this content
     }
-    
+
     _currentFilePath = filePath;
     _codeController?.dispose();
-    
+
     var language = dart;
     if (filePath.endsWith('.yaml')) language = yaml;
     if (filePath.endsWith('.json')) language = json;
 
-    _codeController = CodeController(
-      text: content,
-      language: language,
-    );
+    _codeController = CodeController(text: content, language: language);
 
     _codeController!.addListener(() {
-      context.read<WorkspaceCubit>().updateActiveFileContent(_codeController!.text);
+      context.read<WorkspaceCubit>().updateActiveFileContent(
+        _codeController!.text,
+      );
     });
   }
 
@@ -64,7 +65,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(state.message, style: AppTextStyles.body.copyWith(color: AppColors.error)),
+                  Text(
+                    state.message,
+                    style: AppTextStyles.body.copyWith(color: AppColors.error),
+                  ),
                   const Gap(16),
                   ElevatedButton(
                     onPressed: () => context.go('/dashboard'),
@@ -125,44 +129,129 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     );
   }
 
+  _FileNode _buildFileTree(List<String> paths) {
+    final root = _FileNode('root');
+    for (final path in paths) {
+      final parts = path.split('/');
+      _FileNode current = root;
+      for (int i = 0; i < parts.length; i++) {
+        final part = parts[i];
+        if (i == parts.length - 1) {
+          current.children[part] ??= _FileNode(part, path);
+        } else {
+          current.children[part] ??= _FileNode(part);
+          current = current.children[part]!;
+        }
+      }
+    }
+    return root;
+  }
+
+  Widget _buildTreeNode(
+    BuildContext context,
+    _FileNode node,
+    int depth,
+    WorkspaceLoaded state,
+  ) {
+    if (node.name == 'root') {
+      final sortedChildren = node.children.values.toList()
+        ..sort((a, b) {
+          if (a.isFolder && !b.isFolder) return -1;
+          if (!a.isFolder && b.isFolder) return 1;
+          return a.name.compareTo(b.name);
+        });
+
+      return ListView(
+        children: sortedChildren
+            .map((child) => _buildTreeNode(context, child, 0, state))
+            .toList(),
+      );
+    }
+
+    if (node.isFolder) {
+      final sortedChildren = node.children.values.toList()
+        ..sort((a, b) {
+          if (a.isFolder && !b.isFolder) return -1;
+          if (!a.isFolder && b.isFolder) return 1;
+          return a.name.compareTo(b.name);
+        });
+
+      return Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: depth < 2,
+          dense: true,
+          visualDensity: const VisualDensity(vertical: -4),
+          tilePadding: EdgeInsets.only(left: depth * 16.0 + 16.0, right: 16.0),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.folder_outlined,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const Gap(8),
+              Expanded(
+                child: Text(
+                  node.name,
+                  style: AppTextStyles.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          children: sortedChildren
+              .map((child) => _buildTreeNode(context, child, depth + 1, state))
+              .toList(),
+        ),
+      );
+    }
+
+    final isSelected = node.fullPath == state.activeFile;
+    return InkWell(
+      onTap: () => context.read<WorkspaceCubit>().openFile(node.fullPath!),
+      child: Container(
+        color: isSelected
+            ? AppColors.primary.withValues(alpha: 0.1)
+            : Colors.transparent,
+        padding: EdgeInsets.only(
+          left: depth * 16.0 + 32.0,
+          right: 16.0,
+          top: 4.0,
+          bottom: 4.0,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _getFileIcon(node.name),
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
+            ),
+            const Gap(8),
+            Expanded(
+              child: Text(
+                node.name,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFileExplorer(BuildContext context, WorkspaceLoaded state) {
     if (state.files.isEmpty) {
       return Center(
         child: Text('No files found', style: AppTextStyles.bodySmall),
       );
     }
-    return ListView.builder(
-      itemCount: state.files.length,
-      itemBuilder: (context, index) {
-        final file = state.files[index];
-        final isSelected = file == state.activeFile;
-        return InkWell(
-          onTap: () => context.read<WorkspaceCubit>().openFile(file),
-          child: Container(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  _getFileIcon(file),
-                  size: 16,
-                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                ),
-                const Gap(8),
-                Expanded(
-                  child: Text(
-                    file,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+
+    final root = _buildFileTree(state.files);
+    return _buildTreeNode(context, root, 0, state);
   }
 
   IconData _getFileIcon(String path) {
@@ -197,17 +286,27 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              Icon(_getFileIcon(state.activeFile!), size: 16, color: AppColors.primary),
+              Icon(
+                _getFileIcon(state.activeFile!),
+                size: 16,
+                color: AppColors.primary,
+              ),
               const Gap(8),
               Text(
                 state.activeFile! + (state.hasUnsavedChanges ? ' •' : ''),
                 style: AppTextStyles.label.copyWith(
-                  color: state.hasUnsavedChanges ? AppColors.warning : AppColors.textPrimary,
+                  color: state.hasUnsavedChanges
+                      ? AppColors.warning
+                      : AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
               if (state.isSavingFile)
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               if (!state.isSavingFile)
                 ElevatedButton.icon(
                   onPressed: state.hasUnsavedChanges
@@ -218,9 +317,16 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
-                    disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    disabledBackgroundColor: AppColors.primary.withValues(
+                      alpha: 0.3,
+                    ),
+                    disabledForegroundColor: Colors.white.withValues(
+                      alpha: 0.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -229,19 +335,32 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         ),
         // Code Viewer
         Expanded(
-          child: _codeController == null 
-            ? const SizedBox.shrink()
-            : CodeTheme(
-                data: CodeThemeData(styles: monokaiSublimeTheme),
-                child: SingleChildScrollView(
-                  child: CodeField(
-                    controller: _codeController!,
-                    textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+          child: _codeController == null
+              ? const SizedBox.shrink()
+              : CodeTheme(
+                  data: CodeThemeData(styles: monokaiSublimeTheme),
+                  child: SingleChildScrollView(
+                    child: CodeField(
+                      controller: _codeController!,
+                      textStyle: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ),
-              ),
         ),
       ],
     );
   }
+}
+
+class _FileNode {
+  final String name;
+  final String? fullPath;
+  final Map<String, _FileNode> children = {};
+
+  _FileNode(this.name, [this.fullPath]);
+
+  bool get isFolder => fullPath == null;
 }

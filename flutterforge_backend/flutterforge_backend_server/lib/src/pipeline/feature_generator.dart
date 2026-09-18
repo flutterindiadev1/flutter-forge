@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../generated/protocol.dart';
 
 class FeatureGeneratorEvent {
@@ -27,27 +24,13 @@ class FeatureGeneratorEvent {
 
 class FeatureGenerator {
   Stream<FeatureGeneratorEvent> generate(ProjectConfig config, StreamIterator<PipelineCommand> commandIterator) async* {
-    if (config.geminiApiKey.isEmpty) {
-      yield FeatureGeneratorEvent(
-        message: 'No Gemini API key provided. Skipping feature code generation.',
-        level: 'warning',
-        progress: 1.0,
-      );
-      return;
-    }
+    final pattern = config.architecture?.pattern ?? 'clean_architecture';
+    final stateManagement = config.architecture?.stateManagement ?? 'bloc';
 
     yield FeatureGeneratorEvent(
-      message: 'Initializing AI Feature Generator...',
+      message: 'Scaffolding features ($pattern + $stateManagement)...',
       level: 'info',
       progress: 0.0,
-    );
-
-    final model = GenerativeModel(
-      model: 'gemini-3.6-flash',
-      apiKey: config.geminiApiKey,
-      generationConfig: GenerationConfig(
-        responseMimeType: 'application/json',
-      ),
     );
 
     final totalFeatures = config.features.length;
@@ -72,17 +55,12 @@ class FeatureGenerator {
       );
 
       bool requiresElicitation = true;
+      // ignore: unused_local_variable
       String contextMemory = '';
+      // ignore: unused_local_variable
       int elicitationCount = 0;
 
       while (requiresElicitation) {
-        final prompt = _buildPrompt(config, feature, contextMemory);
-        
-        yield FeatureGeneratorEvent(
-          message: 'Prompting LLM for ${feature.name}...',
-          level: 'info',
-          progress: featureProgressStart + 0.1,
-        );
 
         Map<String, dynamic>? parsed;
         
@@ -91,28 +69,31 @@ class FeatureGenerator {
           
           while (retries < 5) {
             try {
-              final response = await model.generateContent([Content.text(prompt)]);
-              final rawText = response.text ?? '{}';
-              final startIndex = rawText.indexOf('{');
-              final endIndex = rawText.lastIndexOf('}');
-              
-              String responseText = rawText;
-              if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-                responseText = rawText.substring(startIndex, endIndex + 1);
+              // Bypass LLM: scaffold structure based on architecture + state management
+              final featureSlug = feature.name.toLowerCase().replaceAll(' ', '_').replaceAll('&', 'and').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+              final scaffoldedFiles = _scaffoldFiles(featureSlug, pattern, stateManagement);
+              if (config.testing.generateUnitTests || config.testing.generateWidgetTests || config.testing.generateIntegrationTests) {
+                scaffoldedFiles.addAll(_scaffoldTests(featureSlug, config.testing));
               }
-              
-              parsed = jsonDecode(responseText);
-              break; // Break on successful generation and parse
+              parsed = {
+                'files': scaffoldedFiles.map((entry) => {
+                  'path': entry.key,
+                  'content': entry.value,
+                }).toList(),
+              };
+              await Future.delayed(const Duration(milliseconds: 200));
+              break; // Break on successful scaffold
             } catch (e) {
               final errorStr = e.toString();
               if (errorStr.contains('Quota exceeded') || errorStr.contains('429')) {
                 if (retries == 4) rethrow;
+                final waitSeconds = 60 * (retries + 1);
                 yield FeatureGeneratorEvent(
-                  message: 'Rate limit hit for ${feature.name}. Waiting 60s before retrying...',
+                  message: 'Rate limit hit for ${feature.name}. Waiting ${waitSeconds}s before retrying...',
                   level: 'warning',
                   progress: featureProgressStart + 0.1,
                 );
-                await Future.delayed(const Duration(seconds: 60));
+                await Future.delayed(Duration(seconds: waitSeconds));
                 retries++;
               } else if (e is FormatException) {
                 if (retries == 4) {
@@ -209,6 +190,12 @@ class FeatureGenerator {
           requiresElicitation = false;
         }
       }
+
+      // Add a small delay between features to prevent hitting rate limits
+      // (e.g. Gemini free tier is 15 RPM, which is 1 request every 4 seconds)
+      if (i < totalFeatures - 1) {
+        await Future.delayed(const Duration(seconds: 4));
+      }
     }
 
     yield FeatureGeneratorEvent(
@@ -218,9 +205,25 @@ class FeatureGenerator {
     );
   }
 
+  // ignore: unused_element
   String _buildPrompt(ProjectConfig config, FeatureNode feature, String contextMemory) {
     final pattern = config.architecture?.pattern ?? 'clean_architecture';
     final stateManagement = config.architecture?.stateManagement ?? 'bloc';
+    final persona = config.persona;
+    final inspiredBy = config.inspiredBy;
+    final globals = config.llmInstructions.where((i) => i.featureId == null).map((i) => i.instruction).join('\n- ');
+    final integrations = config.integrations;
+
+    String integrationsText = 'Active Integrations: ';
+    final activeIntegrations = <String>[];
+    if (integrations.firebaseAuth) activeIntegrations.add('Firebase Auth');
+    if (integrations.firebaseFirestore) activeIntegrations.add('Firestore');
+    if (integrations.stripe) activeIntegrations.add('Stripe');
+    if (activeIntegrations.isNotEmpty) {
+      integrationsText += activeIntegrations.join(', ');
+    } else {
+      integrationsText = '';
+    }
 
     return '''
 You are an expert Flutter Developer and Architect.
@@ -229,6 +232,12 @@ Project Name: ${config.projectName}
 Description: ${config.description}
 Architecture Pattern: $pattern
 State Management: $stateManagement
+Target Platforms: ${config.platforms.join(', ')}
+
+${integrationsText.isNotEmpty ? '$integrationsText\n' : ''}
+${persona != null ? 'Target Persona:\nRole: ${persona.role}\nGoal: ${persona.goal}\nPain Points: ${persona.painPoints}\n' : ''}
+${inspiredBy.isNotEmpty ? 'Inspired By: $inspiredBy\n' : ''}
+${globals.isNotEmpty ? 'Global Instructions:\n- $globals\n' : ''}
 
 Your task is to implement the following feature:
 Feature Name: ${feature.name}
@@ -260,4 +269,176 @@ Ensure that "path" is a relative path starting from the root of the flutter proj
 Provide production-ready, complete code.
 ''';
   }
+
+  /// Returns a list of (path, content) pairs for the given feature slug,
+  /// based on the selected architecture pattern and state management.
+  List<MapEntry<String, String>> _scaffoldFiles(
+    String slug,
+    String pattern,
+    String stateManagement,
+  ) {
+    final base = 'lib/features/$slug';
+    final files = <MapEntry<String, String>>[];
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    String todo(String label) => '// TODO: implement $label\n';
+
+    // ── Shared presentation files (vary only by state management) ────────────
+    void addPresentationLayer() {
+      switch (stateManagement) {
+        case 'bloc':
+          files.addAll([
+            MapEntry('$base/presentation/bloc/${slug}_bloc.dart',
+                "import 'package:flutter_bloc/flutter_bloc.dart';\nimport '${slug}_event.dart';\nimport '${slug}_state.dart';\n\n${todo('$slug BLoC')}"),
+            MapEntry('$base/presentation/bloc/${slug}_event.dart',
+                "import 'package:equatable/equatable.dart';\n\n${todo('$slug events')}"),
+            MapEntry('$base/presentation/bloc/${slug}_state.dart',
+                "import 'package:equatable/equatable.dart';\n\n${todo('$slug states')}"),
+          ]);
+          break;
+
+        case 'riverpod':
+          files.addAll([
+            MapEntry('$base/presentation/providers/${slug}_provider.dart',
+                "import 'package:flutter_riverpod/flutter_riverpod.dart';\n\n${todo('$slug provider')}"),
+            MapEntry('$base/presentation/providers/${slug}_state.dart',
+                "${todo('$slug state class')}"),
+          ]);
+          break;
+
+        case 'provider':
+          files.addAll([
+            MapEntry('$base/presentation/providers/${slug}_notifier.dart',
+                "import 'package:flutter/foundation.dart';\n\n${todo('$slug ChangeNotifier')}"),
+          ]);
+          break;
+
+        default: // cubit or anything else
+          files.addAll([
+            MapEntry('$base/presentation/cubit/${slug}_cubit.dart',
+                "import 'package:flutter_bloc/flutter_bloc.dart';\nimport '${slug}_state.dart';\n\n${todo('$slug Cubit')}"),
+            MapEntry('$base/presentation/cubit/${slug}_state.dart',
+                "import 'package:equatable/equatable.dart';\n\n${todo('$slug states')}"),
+          ]);
+      }
+
+      files.addAll([
+        MapEntry('$base/presentation/screens/${slug}_screen.dart',
+            "import 'package:flutter/material.dart';\n\n${todo('$slug screen')}"),
+        MapEntry('$base/presentation/widgets/${slug}_widget.dart',
+            "import 'package:flutter/material.dart';\n\n${todo('$slug widget')}"),
+      ]);
+    }
+
+    // ── Architecture-specific layers ─────────────────────────────────────────
+    if (pattern == 'clean_architecture') {
+      // Domain layer
+      files.addAll([
+        MapEntry('$base/domain/entities/${slug}_entity.dart',  todo('$slug entity')),
+        MapEntry('$base/domain/repositories/${slug}_repository.dart', todo('$slug repository interface')),
+        MapEntry('$base/domain/usecases/get_${slug}.dart', todo('get_$slug use case')),
+        MapEntry('$base/domain/usecases/save_${slug}.dart', todo('save_$slug use case')),
+      ]);
+
+      // Data layer
+      files.addAll([
+        MapEntry('$base/data/models/${slug}_model.dart', todo('$slug model (fromJson/toJson)')),
+        MapEntry('$base/data/datasources/${slug}_remote_datasource.dart', todo('$slug remote data source')),
+        MapEntry('$base/data/datasources/${slug}_local_datasource.dart', todo('$slug local data source')),
+        MapEntry('$base/data/repositories/${slug}_repository_impl.dart', todo('$slug repository impl')),
+      ]);
+
+      // Presentation layer (state management aware)
+      addPresentationLayer();
+
+    } else if (pattern == 'mvvm') {
+      // Model
+      files.addAll([
+        MapEntry('$base/models/${slug}_model.dart', todo('$slug model')),
+        MapEntry('$base/repositories/${slug}_repository.dart', todo('$slug repository')),
+        MapEntry('$base/services/${slug}_service.dart', todo('$slug service')),
+      ]);
+
+      // ViewModel / state (state management aware)
+      switch (stateManagement) {
+        case 'bloc':
+          files.addAll([
+            MapEntry('$base/viewmodel/${slug}_bloc.dart', todo('$slug BLoC ViewModel')),
+            MapEntry('$base/viewmodel/${slug}_event.dart', todo('$slug events')),
+            MapEntry('$base/viewmodel/${slug}_state.dart', todo('$slug states')),
+          ]);
+          break;
+        case 'riverpod':
+          files.addAll([
+            MapEntry('$base/viewmodel/${slug}_viewmodel.dart',
+                "import 'package:flutter_riverpod/flutter_riverpod.dart';\n\n${todo('$slug ViewModel (Riverpod)')}"),
+          ]);
+          break;
+        case 'provider':
+          files.addAll([
+            MapEntry('$base/viewmodel/${slug}_viewmodel.dart',
+                "import 'package:flutter/foundation.dart';\n\nclass ${_toPascal(slug)}ViewModel extends ChangeNotifier {\n  ${todo('$slug ViewModel (Provider)')}}"),
+          ]);
+          break;
+        default:
+          files.addAll([
+            MapEntry('$base/viewmodel/${slug}_cubit.dart', todo('$slug Cubit ViewModel')),
+            MapEntry('$base/viewmodel/${slug}_state.dart', todo('$slug states')),
+          ]);
+      }
+
+      // View
+      files.addAll([
+        MapEntry('$base/view/${slug}_screen.dart',
+            "import 'package:flutter/material.dart';\n\n${todo('$slug screen')}"),
+        MapEntry('$base/view/widgets/${slug}_widget.dart',
+            "import 'package:flutter/material.dart';\n\n${todo('$slug widget')}"),
+      ]);
+
+    } else if (pattern == 'hexagonal') {
+      // Hexagonal / Ports & Adapters
+      files.addAll([
+        MapEntry('$base/core/${slug}_entity.dart', todo('$slug entity')),
+        MapEntry('$base/ports/in/${slug}_usecase.dart', todo('$slug input port (usecase)')),
+        MapEntry('$base/ports/out/${slug}_port.dart', todo('$slug output port')),
+        MapEntry('$base/adapters/in/ui/${slug}_screen.dart', "import 'package:flutter/material.dart';\n\n${todo('$slug UI adapter')}"),
+        MapEntry('$base/adapters/out/api/${slug}_api_adapter.dart', todo('$slug API adapter')),
+        MapEntry('$base/adapters/out/db/${slug}_db_adapter.dart', todo('$slug DB adapter')),
+      ]);
+    } else {
+      // Fallback: simple feature-first flat structure
+      addPresentationLayer();
+      files.addAll([
+        MapEntry('$base/${slug}_model.dart', todo('$slug model')),
+        MapEntry('$base/${slug}_repository.dart', todo('$slug repository')),
+      ]);
+    }
+
+    return files;
+  }
+
+  /// Scaffolds test files based on the requested testing flags.
+  List<MapEntry<String, String>> _scaffoldTests(String slug, TestingConfig testing) {
+    final files = <MapEntry<String, String>>[];
+    String todo(String label) => '// TODO: write $label\n';
+    
+    if (testing.generateUnitTests) {
+      files.add(MapEntry('test/features/$slug/${slug}_test.dart', "import 'package:flutter_test/flutter_test.dart';\n\nvoid main() {\n  ${todo('unit tests for $slug')}}\n"));
+    }
+    
+    if (testing.generateWidgetTests) {
+      files.add(MapEntry('test/features/$slug/presentation/${slug}_widget_test.dart', "import 'package:flutter_test/flutter_test.dart';\n\nvoid main() {\n  testWidgets('renders $slug widget', (tester) async {\n    ${todo('widget tests for $slug')}  });\n}\n"));
+    }
+    
+    if (testing.generateIntegrationTests) {
+      files.add(MapEntry('integration_test/${slug}_integration_test.dart', "import 'package:flutter_test/flutter_test.dart';\nimport 'package:integration_test/integration_test.dart';\n\nvoid main() {\n  IntegrationTestWidgetsFlutterBinding.ensureInitialized();\n\n  testWidgets('tests $slug flow', (tester) async {\n    ${todo('integration tests for $slug')}  });\n}\n"));
+    }
+    
+    return files;
+  }
+
+  /// Converts snake_case to PascalCase.
+  String _toPascal(String slug) =>
+      slug.split('_').map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}').join();
 }
+

@@ -6,6 +6,7 @@ import 'dependency_installer.dart';
 import 'architecture_generator.dart';
 import 'feature_generator.dart';
 import 'github_pusher.dart';
+import 'pubspec_patcher.dart';
 
 class PipelineOrchestrator {
   final ProjectConfig config;
@@ -102,6 +103,18 @@ class PipelineOrchestrator {
       }
       if (event.progress >= 1.0) {
         depOk = true;
+      }
+    }
+
+    if (!depOk) return;
+
+    // Phase 1.8: Pubspec Patching
+    final pubspecPatcher = PubspecPatcher();
+    await for (final event in pubspecPatcher.patch(config)) {
+      addLog(event.message, level: event.level);
+      if (event.isError) {
+        yield createState(PipelinePhase.failed, 1.0, isComplete: true);
+        return;
       }
     }
 
