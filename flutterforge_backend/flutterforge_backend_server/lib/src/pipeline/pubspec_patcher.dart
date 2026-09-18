@@ -69,6 +69,43 @@ output-localization-file: app_localizations.dart
       }
     }
     
+    // Check Design & Assets
+    if (config.appIcon != null || config.assets.isNotEmpty) {
+      yield PubspecEvent(message: 'Configuring assets...', progress: 0.6);
+      
+      final assetsDir = Directory('$projectPath/assets');
+      if (!await assetsDir.exists()) await assetsDir.create(recursive: true);
+      
+      final iconsDir = Directory('$projectPath/assets/icons');
+      if (!await iconsDir.exists()) await iconsDir.create(recursive: true);
+      
+      final assetPaths = <String>{};
+      
+      if (config.appIcon != null) {
+        final ext = config.appIcon!.name.split('.').last;
+        final iconPath = 'assets/icons/app_icon.$ext';
+        // Create an empty dummy file so flutter pub get doesn't crash
+        await File('$projectPath/$iconPath').writeAsBytes([0]); 
+        assetPaths.add('assets/icons/');
+      }
+      
+      for (final asset in config.assets) {
+        final assetPath = 'assets/${asset.name}';
+        await File('$projectPath/$assetPath').writeAsBytes([0]);
+        assetPaths.add('assets/');
+      }
+      
+      if (assetPaths.isNotEmpty) {
+        if (!content.contains('\n  assets:')) {
+          final assetsStr = assetPaths.map((p) => '    - $p').join('\n');
+          content = content.replaceFirst(
+            '\nflutter:\n',
+            '\nflutter:\n  assets:\n$assetsStr\n'
+          );
+        }
+      }
+    }
+    
     await pubspecFile.writeAsString(content);
     
     yield PubspecEvent(message: 'Pubspec patched successfully.', level: 'success', progress: 1.0);

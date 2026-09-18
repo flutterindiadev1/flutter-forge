@@ -32,6 +32,7 @@ class ArchitectureGenerator {
     // Create base directories
     final dirsToCreate = [
       'lib/core/di',
+      'lib/core/env',
       'lib/core/network',
       'lib/core/router',
       'lib/core/storage',
@@ -158,6 +159,90 @@ class ApiClient {
 ''';
     }
     await File('${projectDir.path}/lib/core/network/api_client.dart').writeAsString(networkContent);
+
+    // 4. Local Storage (lib/core/storage/storage_service.dart)
+    final storage = arch?.localStorage ?? 'shared_prefs';
+    String storageContent = '';
+    if (storage == 'hive') {
+      storageContent = '''
+import 'package:hive_flutter/hive_flutter.dart';
+
+class StorageService {
+  static Future<void> init() async {
+    await Hive.initFlutter();
+  }
+}
+''';
+    } else if (storage == 'isar') {
+      storageContent = '''
+import 'package:isar/isar.dart';
+
+class StorageService {
+  static late Isar isar;
+
+  static Future<void> init() async {
+    // isar = await Isar.open([...]);
+  }
+}
+''';
+    } else {
+      storageContent = '''
+import 'package:shared_preferences/shared_preferences.dart';
+
+class StorageService {
+  static late SharedPreferences prefs;
+
+  static Future<void> init() async {
+    prefs = await SharedPreferences.getInstance();
+  }
+}
+''';
+    }
+    await File('${projectDir.path}/lib/core/storage/storage_service.dart').writeAsString(storageContent);
+
+    // 4. Environment/Flavors (lib/core/env/app_config.dart)
+    final env = config.environment;
+    if (env.hasDev || env.hasStaging || env.hasProd) {
+      final envContent = '''
+enum Environment {
+  dev,
+  staging,
+  prod,
+}
+
+class AppConfig {
+  final Environment environment;
+  final String apiBaseUrl;
+  final String appName;
+
+  AppConfig({
+    required this.environment,
+    required this.apiBaseUrl,
+    required this.appName,
+  });
+
+  static late AppConfig _instance;
+  static AppConfig get instance => _instance;
+
+  static void instantiate({
+    required Environment environment,
+    required String apiBaseUrl,
+    required String appName,
+  }) {
+    _instance = AppConfig(
+      environment: environment,
+      apiBaseUrl: apiBaseUrl,
+      appName: appName,
+    );
+  }
+  
+  bool get isDev => environment == Environment.dev;
+  bool get isStaging => environment == Environment.staging;
+  bool get isProd => environment == Environment.prod;
+}
+''';
+      await File('${projectDir.path}/lib/core/env/app_config.dart').writeAsString(envContent);
+    }
 
     yield ArchitectureEvent(message: 'Writing lib/main.dart...', progress: 0.8);
     
