@@ -1,0 +1,11 @@
+import '../../data/datasources/revenuecat_datasource.dart';
+
+class CheckEntitlementUseCase {
+  final RevenueCatDataSource dataSource;
+
+  CheckEntitlementUseCase(this.dataSource);
+
+  Future<bool> call() {
+    return dataSource.checkEntitlement();
+  }
+}

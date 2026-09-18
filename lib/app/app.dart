@@ -11,6 +11,7 @@ import '../features/pipeline/presentation/cubit/pipeline_cubit.dart';
 import '../features/pipeline/presentation/screens/pipeline_screen.dart';
 import '../features/workspace/presentation/screens/workspace_screen.dart';
 import '../features/workspace/presentation/cubit/workspace_cubit.dart';
+import '../core/network/api_client.dart';
 import 'theme/app_theme.dart';
 
 final _router = GoRouter(
@@ -51,7 +52,7 @@ final _router = GoRouter(
       builder: (context, state) {
         final projectId = state.pathParameters['projectId'] ?? '';
         return BlocProvider(
-          create: (_) => WorkspaceCubit(projectId: projectId),
+          create: (_) => WorkspaceCubit(projectId: projectId, client: client),
           child: const WorkspaceScreen(),
         );
       },

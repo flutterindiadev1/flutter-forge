@@ -17,8 +17,6 @@ enum PipelinePhase implements _i1.SerializableModel {
   parsing,
   structureGen,
   elicitation,
-  llmGen,
-  astMerge,
   done,
   failed;
 
@@ -30,10 +28,6 @@ enum PipelinePhase implements _i1.SerializableModel {
         return PipelinePhase.structureGen;
       case 'elicitation':
         return PipelinePhase.elicitation;
-      case 'llmGen':
-        return PipelinePhase.llmGen;
-      case 'astMerge':
-        return PipelinePhase.astMerge;
       case 'done':
         return PipelinePhase.done;
       case 'failed':

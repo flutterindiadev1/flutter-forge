@@ -53,14 +53,14 @@ class WorkspaceLoaded extends WorkspaceState {
 
   @override
   List<Object?> get props => [
-    project,
-    files,
-    activeFile,
-    activeFileContent,
-    isLoadingFile,
-    isSavingFile,
-    hasUnsavedChanges,
-  ];
+        project,
+        files,
+        activeFile,
+        activeFileContent,
+        isLoadingFile,
+        isSavingFile,
+        hasUnsavedChanges,
+      ];
 }
 
 class WorkspaceError extends WorkspaceState {

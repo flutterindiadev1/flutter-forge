@@ -3,7 +3,5 @@ values:
   - parsing
   - structureGen
   - elicitation
-  - llmGen
-  - astMerge
   - done
   - failed

@@ -1,0 +1,26 @@
+import 'package:dio/dio.dart';
+import '../../core/storage/local_storage.dart';
+import '../../constants/app_constants.dart';
+
+class AuthInterceptor extends Interceptor {
+  final LocalStorage localStorage;
+
+  AuthInterceptor(this.localStorage);
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final token = localStorage.getString(AppConstants.tokenKey);
+    if (token != null) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401) {
+      // Handle token expiration/refresh here
+    }
+    handler.next(err);
+  }
+}

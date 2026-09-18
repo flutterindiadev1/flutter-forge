@@ -1,0 +1,12 @@
+import '../../domain/entities/{{slug}}_entity.dart';
+import '../../domain/repositories/{{slug}}_repository.dart';
+
+class {{className}}UseCase {
+  final {{className}}Repository repository;
+
+  {{className}}UseCase(this.repository);
+
+  Future<{{className}}Entity> call() {
+    return repository.get();
+  }
+}

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:serverpod/serverpod.dart';
+import 'package:path/path.dart' as p;
 import '../generated/protocol.dart';
 
 class ProjectEndpoint extends Endpoint {
@@ -11,15 +12,13 @@ class ProjectEndpoint extends Endpoint {
     session.log('Platforms: ${config.platforms.join(', ')}');
     session.log('Architecture: ${config.architecture?.pattern}');
     
-    // Store in DB for pipeline processor to load
-    final patchedJson = {
-      ...config.toJson(),
-      'projectId': generatedId,
-    };
+    // Store in DB for pipeline processor to load, stripping secrets
+    final patchedJson = config.toJson();
+    patchedJson['projectId'] = generatedId;
     
     final record = ProjectRecord(
       projectId: generatedId,
-      userId: session.authenticated?.userIdentifier?.toString(),
+      userId: session.authenticated?.userIdentifier.toString(),
       configJson: jsonEncode(patchedJson),
       status: 'pending',
       createdAt: DateTime.now(),
@@ -30,7 +29,7 @@ class ProjectEndpoint extends Endpoint {
   }
 
   Future<List<ProjectRecord>> listProjects(Session session) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
+    final userId = session.authenticated?.userIdentifier.toString();
     if (userId == null) {
       return []; // Return empty if not authenticated
     }
@@ -46,7 +45,7 @@ class ProjectEndpoint extends Endpoint {
   }
 
   Future<ProjectRecord?> getProject(Session session, String projectId) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
+    final userId = session.authenticated?.userIdentifier.toString();
     if (userId == null) return null;
 
     return await ProjectRecord.db.findFirstRow(
@@ -55,8 +54,38 @@ class ProjectEndpoint extends Endpoint {
     );
   }
 
+  Future<void> updateProjectConfig(Session session, String projectId, ProjectConfig config) async {
+    final record = await getProject(session, projectId);
+    if (record == null) {
+      throw Exception('Project not found or unauthorized');
+    }
+
+    final patchedJson = config.toJson();
+    patchedJson['projectId'] = projectId;
+    
+    record.configJson = jsonEncode(patchedJson);
+    record.status = 'pending';
+    record.updatedAt = DateTime.now();
+
+    await ProjectRecord.db.updateRow(session, record);
+  }
+
+  Future<void> deleteProject(Session session, String projectId) async {
+    final record = await getProject(session, projectId);
+    if (record == null) {
+      throw Exception('Project not found or unauthorized');
+    }
+
+    await ProjectRecord.db.deleteRow(session, record);
+
+    final projectDir = Directory('/tmp/flutterforge/$projectId');
+    if (await projectDir.exists()) {
+      await projectDir.delete(recursive: true);
+    }
+  }
+
   Future<List<String>> listProjectFiles(Session session, String projectId) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
+    final userId = session.authenticated?.userIdentifier.toString();
     if (userId == null) return [];
 
     final project = await getProject(session, projectId);
@@ -68,9 +97,21 @@ class ProjectEndpoint extends Endpoint {
     final files = <String>[];
     await for (final entity in dir.list(recursive: true)) {
       if (entity is File) {
-        // Skip .git and build directories
-        if (entity.path.contains('/.git/') || entity.path.contains('/build/')) continue;
-        files.add(entity.path.substring(dir.path.length + 1));
+        final relPath = entity.path.substring(dir.path.length + 1);
+        
+        // Skip hidden directories like .git, .dart_tool, .idea, and build output
+        if (relPath.startsWith('.git/') || 
+            relPath.startsWith('.dart_tool/') || 
+            relPath.startsWith('.idea/') || 
+            relPath.startsWith('build/') ||
+            relPath.contains('/.git/') || 
+            relPath.contains('/.dart_tool/') || 
+            relPath.contains('/.idea/') || 
+            relPath.contains('/build/')) {
+          continue;
+        }
+
+        files.add(relPath);
       }
     }
     
@@ -78,17 +119,43 @@ class ProjectEndpoint extends Endpoint {
     return files;
   }
 
+  Future<bool> deleteFile(Session session, String projectId, String filePath) async {
+    final userId = session.authenticated?.userIdentifier.toString();
+    if (userId == null) return false;
+
+    final project = await getProject(session, projectId);
+    if (project == null) return false;
+
+    final basePath = p.canonicalize('/tmp/flutterforge/$projectId');
+    final requestedPath = p.canonicalize(p.join(basePath, filePath));
+
+    if (!requestedPath.startsWith(basePath)) return false;
+
+    final file = File(requestedPath);
+    if (!await file.exists()) return false;
+
+    try {
+      await file.delete();
+      return true;
+    } catch (e) {
+      session.log('Failed to delete file $filePath: $e', level: LogLevel.error);
+      return false;
+    }
+  }
+
   Future<String?> getFileContent(Session session, String projectId, String filePath) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
+    final userId = session.authenticated?.userIdentifier.toString();
     if (userId == null) return null;
 
     final project = await getProject(session, projectId);
     if (project == null) return null;
 
-    // Simple path traversal protection
-    if (filePath.contains('..')) return null;
+    final basePath = p.canonicalize('/tmp/flutterforge/$projectId');
+    final requestedPath = p.canonicalize(p.join(basePath, filePath));
 
-    final file = File('/tmp/flutterforge/$projectId/$filePath');
+    if (!requestedPath.startsWith(basePath)) return null;
+
+    final file = File(requestedPath);
     if (!await file.exists()) return null;
 
     try {
@@ -100,15 +167,18 @@ class ProjectEndpoint extends Endpoint {
   }
 
   Future<bool> saveFileContent(Session session, String projectId, String filePath, String content) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
+    final userId = session.authenticated?.userIdentifier.toString();
     if (userId == null) return false;
 
     final project = await getProject(session, projectId);
     if (project == null) return false;
 
-    if (filePath.contains('..')) return false;
+    final basePath = p.canonicalize('/tmp/flutterforge/$projectId');
+    final requestedPath = p.canonicalize(p.join(basePath, filePath));
 
-    final file = File('/tmp/flutterforge/$projectId/$filePath');
+    if (!requestedPath.startsWith(basePath)) return false;
+
+    final file = File(requestedPath);
     
     // Ensure parent directory exists if new file
     if (!await file.parent.exists()) {
@@ -124,41 +194,7 @@ class ProjectEndpoint extends Endpoint {
     }
   }
 
-  Future<bool> commitAndPush(Session session, String projectId, String commitMessage) async {
-    final userId = session.authenticated?.userIdentifier?.toString();
-    if (userId == null) return false;
 
-    final project = await getProject(session, projectId);
-    if (project == null) return false;
-
-    // Load github token
-    var settings = await UserSettings.db.findFirstRow(
-      session,
-      where: (t) => t.userInfoId.equals(userId),
-    );
-    
-    final token = settings?.githubToken;
-    if (token == null || token.isEmpty) return false;
-    
-    final projectPath = '/tmp/flutterforge/$projectId';
-
-    try {
-      final addRes = await Process.run('git', ['add', '.'], workingDirectory: projectPath);
-      if (addRes.exitCode != 0) return false;
-
-      final commitRes = await Process.run('git', ['commit', '-m', commitMessage], workingDirectory: projectPath);
-      // git commit returns 1 if there's nothing to commit. We can just ignore or pass through
-      if (commitRes.exitCode != 0 && !commitRes.stdout.toString().contains('nothing to commit')) {
-        return false;
-      }
-
-      final pushRes = await Process.run('git', ['push'], workingDirectory: projectPath);
-      return pushRes.exitCode == 0;
-    } catch (e) {
-      session.log('Git operation failed: $e', level: LogLevel.error);
-      return false;
-    }
-  }
 
   Future<PubDependency?> resolvePubDependency(Session session, String url) async {
     final uri = Uri.tryParse(url);

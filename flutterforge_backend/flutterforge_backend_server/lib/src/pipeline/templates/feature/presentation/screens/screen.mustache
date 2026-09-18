@@ -1,0 +1,32 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/{{slug}}_bloc.dart';
+import '../bloc/{{slug}}_event.dart';
+import '../bloc/{{slug}}_state.dart';
+import '../../../../core/di/injection.dart';
+
+class {{className}}Screen extends StatelessWidget {
+  const {{className}}Screen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<{{className}}Bloc>()..add(Load{{className}}()),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('{{className}}')),
+        body: BlocBuilder<{{className}}Bloc, {{className}}State>(
+          builder: (context, state) {
+            if (state is {{className}}Loading) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is {{className}}Loaded) {
+              return Center(child: Text('Loaded: ${state.data.id}'));
+            } else if (state is {{className}}Error) {
+              return Center(child: Text('Error: ${state.message}'));
+            }
+            return const Center(child: Text('Welcome to {{className}}'));
+          },
+        ),
+      ),
+    );
+  }
+}

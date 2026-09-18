@@ -5,17 +5,13 @@ fields:
   description: String
   team: String
   platforms: List<String>
-  geminiApiKey: String
-  inspiredBy: String
-  persona: UserPersona?
+
   templateId: String?
   features: List<FeatureNode>
   customPainters: List<CustomPainterSpec>
   nativeModules: List<NativeModuleSpec>
   dependencies: List<PubDependency>
-  llmInstructions: List<LlmInstruction>
-  designSource: DesignSource
-  aiDesignBrief: AiDesignBrief?
+
   figmaFileUrl: String?
   figmaAccessToken: String?
   appIcon: AssetFile?
@@ -27,5 +23,4 @@ fields:
   monetization: MonetizationConfig?
   testing: TestingConfig
   ciCd: CiCdConfig
-  postmanCollection: PostmanConfig?
-  githubToken: String?
+

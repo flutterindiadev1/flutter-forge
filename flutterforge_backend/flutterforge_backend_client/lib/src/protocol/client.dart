@@ -17,24 +17,22 @@ import 'package:serverpod_client/serverpod_client.dart' as _i2;
 import 'dart:async' as _i3;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _i4;
-import 'package:flutterforge_backend_client/src/protocol/ai_analysis_result.dart'
-    as _i5;
 import 'package:flutterforge_backend_client/src/protocol/pipeline_state_message.dart'
-    as _i6;
+    as _i5;
 import 'package:flutterforge_backend_client/src/protocol/pipeline_command.dart'
-    as _i7;
+    as _i6;
 import 'package:flutterforge_backend_client/src/protocol/project_config.dart'
-    as _i8;
+    as _i7;
 import 'package:flutterforge_backend_client/src/protocol/project_record.dart'
-    as _i9;
+    as _i8;
 import 'package:flutterforge_backend_client/src/protocol/pub_dependency.dart'
-    as _i10;
+    as _i9;
 import 'package:flutterforge_backend_client/src/protocol/user_settings.dart'
-    as _i11;
+    as _i10;
 import 'package:flutterforge_backend_client/src/protocol/greetings/greeting.dart'
-    as _i12;
-import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i13;
-import 'protocol.dart' as _i14;
+    as _i11;
+import 'package:serverpod_auth_client/serverpod_auth_client.dart' as _i12;
+import 'protocol.dart' as _i13;
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -258,40 +256,18 @@ class EndpointJwtRefresh extends _i4.EndpointRefreshJwtTokens {
 }
 
 /// {@category Endpoint}
-class EndpointAi extends _i2.EndpointRef {
-  EndpointAi(_i2.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'ai';
-
-  _i3.Future<_i5.AiAnalysisResult> analyzeRequirements(
-    String apiKey,
-    String description,
-    Map<String, String>? answers,
-  ) => caller.callServerEndpoint<_i5.AiAnalysisResult>(
-    'ai',
-    'analyzeRequirements',
-    {
-      'apiKey': apiKey,
-      'description': description,
-      'answers': answers,
-    },
-  );
-}
-
-/// {@category Endpoint}
 class EndpointPipeline extends _i2.EndpointRef {
   EndpointPipeline(_i2.EndpointCaller caller) : super(caller);
 
   @override
   String get name => 'pipeline';
 
-  _i3.Stream<_i6.PipelineStateMessage> startPipeline(
-    _i3.Stream<_i7.PipelineCommand> commandStream,
+  _i3.Stream<_i5.PipelineStateMessage> startPipeline(
+    _i3.Stream<_i6.PipelineCommand> commandStream,
   ) =>
       caller.callStreamingServerEndpoint<
-        _i3.Stream<_i6.PipelineStateMessage>,
-        _i6.PipelineStateMessage
+        _i3.Stream<_i5.PipelineStateMessage>,
+        _i5.PipelineStateMessage
       >(
         'pipeline',
         'startPipeline',
@@ -307,24 +283,43 @@ class EndpointProject extends _i2.EndpointRef {
   @override
   String get name => 'project';
 
-  _i3.Future<String> submitConfig(_i8.ProjectConfig config) =>
+  _i3.Future<String> submitConfig(_i7.ProjectConfig config) =>
       caller.callServerEndpoint<String>(
         'project',
         'submitConfig',
         {'config': config},
       );
 
-  _i3.Future<List<_i9.ProjectRecord>> listProjects() =>
-      caller.callServerEndpoint<List<_i9.ProjectRecord>>(
+  _i3.Future<List<_i8.ProjectRecord>> listProjects() =>
+      caller.callServerEndpoint<List<_i8.ProjectRecord>>(
         'project',
         'listProjects',
         {},
       );
 
-  _i3.Future<_i9.ProjectRecord?> getProject(String projectId) =>
-      caller.callServerEndpoint<_i9.ProjectRecord?>(
+  _i3.Future<_i8.ProjectRecord?> getProject(String projectId) =>
+      caller.callServerEndpoint<_i8.ProjectRecord?>(
         'project',
         'getProject',
+        {'projectId': projectId},
+      );
+
+  _i3.Future<void> updateProjectConfig(
+    String projectId,
+    _i7.ProjectConfig config,
+  ) => caller.callServerEndpoint<void>(
+    'project',
+    'updateProjectConfig',
+    {
+      'projectId': projectId,
+      'config': config,
+    },
+  );
+
+  _i3.Future<void> deleteProject(String projectId) =>
+      caller.callServerEndpoint<void>(
+        'project',
+        'deleteProject',
         {'projectId': projectId},
       );
 
@@ -334,6 +329,18 @@ class EndpointProject extends _i2.EndpointRef {
         'listProjectFiles',
         {'projectId': projectId},
       );
+
+  _i3.Future<bool> deleteFile(
+    String projectId,
+    String filePath,
+  ) => caller.callServerEndpoint<bool>(
+    'project',
+    'deleteFile',
+    {
+      'projectId': projectId,
+      'filePath': filePath,
+    },
+  );
 
   _i3.Future<String?> getFileContent(
     String projectId,
@@ -361,20 +368,8 @@ class EndpointProject extends _i2.EndpointRef {
     },
   );
 
-  _i3.Future<bool> commitAndPush(
-    String projectId,
-    String commitMessage,
-  ) => caller.callServerEndpoint<bool>(
-    'project',
-    'commitAndPush',
-    {
-      'projectId': projectId,
-      'commitMessage': commitMessage,
-    },
-  );
-
-  _i3.Future<_i10.PubDependency?> resolvePubDependency(String url) =>
-      caller.callServerEndpoint<_i10.PubDependency?>(
+  _i3.Future<_i9.PubDependency?> resolvePubDependency(String url) =>
+      caller.callServerEndpoint<_i9.PubDependency?>(
         'project',
         'resolvePubDependency',
         {'url': url},
@@ -388,37 +383,12 @@ class EndpointUser extends _i2.EndpointRef {
   @override
   String get name => 'user';
 
-  _i3.Future<_i11.UserSettings> getSettings() =>
-      caller.callServerEndpoint<_i11.UserSettings>(
+  _i3.Future<_i10.UserSettings> getSettings() =>
+      caller.callServerEndpoint<_i10.UserSettings>(
         'user',
         'getSettings',
         {},
       );
-
-  _i3.Future<void> saveApiKey(String key) => caller.callServerEndpoint<void>(
-    'user',
-    'saveApiKey',
-    {'key': key},
-  );
-
-  _i3.Future<void> deleteApiKey() => caller.callServerEndpoint<void>(
-    'user',
-    'deleteApiKey',
-    {},
-  );
-
-  _i3.Future<void> saveGithubToken(String key) =>
-      caller.callServerEndpoint<void>(
-        'user',
-        'saveGithubToken',
-        {'key': key},
-      );
-
-  _i3.Future<void> deleteGithubToken() => caller.callServerEndpoint<void>(
-    'user',
-    'deleteGithubToken',
-    {},
-  );
 }
 
 /// This is an example endpoint that returns a greeting message through
@@ -431,8 +401,8 @@ class EndpointGreeting extends _i2.EndpointRef {
   String get name => 'greeting';
 
   /// Returns a personalized greeting message: "Hello {name}".
-  _i3.Future<_i12.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i12.Greeting>(
+  _i3.Future<_i11.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i11.Greeting>(
         'greeting',
         'hello',
         {'name': name},
@@ -442,13 +412,13 @@ class EndpointGreeting extends _i2.EndpointRef {
 class Modules {
   Modules(Client client) {
     serverpod_auth_idp = _i1.Caller(client);
-    auth = _i13.Caller(client);
+    auth = _i12.Caller(client);
     serverpod_auth_core = _i4.Caller(client);
   }
 
   late final _i1.Caller serverpod_auth_idp;
 
-  late final _i13.Caller auth;
+  late final _i12.Caller auth;
 
   late final _i4.Caller serverpod_auth_core;
 }
@@ -473,7 +443,7 @@ class Client extends _i2.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
          host,
-         _i14.Protocol(),
+         _i13.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -484,7 +454,6 @@ class Client extends _i2.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
-    ai = EndpointAi(this);
     pipeline = EndpointPipeline(this);
     project = EndpointProject(this);
     user = EndpointUser(this);
@@ -495,8 +464,6 @@ class Client extends _i2.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
-
-  late final EndpointAi ai;
 
   late final EndpointPipeline pipeline;
 
@@ -512,7 +479,6 @@ class Client extends _i2.ServerpodClientShared {
   Map<String, _i2.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
-    'ai': ai,
     'pipeline': pipeline,
     'project': project,
     'user': user,

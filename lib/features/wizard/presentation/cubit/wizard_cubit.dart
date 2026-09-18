@@ -8,7 +8,6 @@ import 'wizard_state.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:flutterforge_backend_client/flutterforge_backend_client.dart'
     as sp;
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 class WizardCubit extends Cubit<WizardState> {
   WizardCubit()
@@ -42,284 +41,19 @@ class WizardCubit extends Cubit<WizardState> {
         ),
       ),
     );
-    loadSavedApiKey();
   }
 
-  // ─── API Key Management ───────────────────────────────────────────────────
-
-  Future<void> loadSavedApiKey() async {
-    try {
-      final settings = await client.user.getSettings();
-      bool apiSaved = false;
-      bool githubSaved = false;
-      var newConfig = state.config;
-
-      if (settings.geminiApiKey != null && settings.geminiApiKey!.isNotEmpty) {
-        newConfig = newConfig.copyWith(geminiApiKey: settings.geminiApiKey);
-        apiSaved = true;
-      }
-
-      // Load GitHub token as well
-      if (settings.githubToken != null && settings.githubToken!.isNotEmpty) {
-        newConfig = newConfig.copyWith(githubToken: settings.githubToken);
-        githubSaved = true;
-      }
-
-      emit(
-        state.copyWith(
-          config: newConfig,
-          apiKeySaved: apiSaved,
-          githubTokenSaved: githubSaved,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Failed to load api keys: $e');
-      emit(state.copyWith(apiKeySaved: false, githubTokenSaved: false));
-    }
-  }
-
-  Future<void> saveApiKey(String key) async {
+  void loadExistingProject(ProjectConfig existingConfig) {
     emit(
-      state.copyWith(
-        config: state.config.copyWith(geminiApiKey: key),
-        apiKeySaved: key.isNotEmpty,
+      WizardState(
+        config: existingConfig,
+        isEditingExisting: true,
+        aiAnalysisStatus: AiAnalysisStatus.idle,
       ),
     );
-    try {
-      await client.user.saveApiKey(key);
-      emit(
-        state.copyWith(
-          config: state.config.copyWith(geminiApiKey: key),
-          apiKeySaved: key.isNotEmpty,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Failed to save api key: $e');
-    }
   }
 
-  Future<void> saveGithubToken(String key) async {
-    emit(
-      state.copyWith(
-        config: state.config.copyWith(githubToken: key),
-        githubTokenSaved: key.isNotEmpty,
-      ),
-    );
-    try {
-      await client.user.saveGithubToken(key);
-      emit(
-        state.copyWith(
-          config: state.config.copyWith(githubToken: key),
-          githubTokenSaved: key.isNotEmpty,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Failed to save github token: $e');
-    }
-  }
 
-  // ─── Background AI Analysis ───────────────────────────────────────────────
-
-  Future<void> triggerBackgroundAnalysis() async {
-    if (state.config.description.isEmpty) {
-      return;
-    }
-    if (state.aiAnalysisStatus == AiAnalysisStatus.running ||
-        state.aiAnalysisStatus == AiAnalysisStatus.done) {
-      return;
-    }
-
-    emit(
-      state.copyWith(
-        aiAnalysisStatus: AiAnalysisStatus.running,
-        clearError: true,
-      ),
-    );
-
-    try {
-      List<FeatureNode> generatedFeatures = [];
-      final apiKey = state.config.geminiApiKey;
-
-      if (apiKey.isEmpty) {
-        // Fallback to dummy data if no API key is provided
-        await Future.delayed(const Duration(seconds: 2));
-        generatedFeatures = [
-          FeatureNode(
-            id: const Uuid().v4(),
-            name: 'Authentication',
-            description: 'Login, signup, password reset',
-            layer: FeatureLayer.domain,
-            dependencyIds: const [],
-            x: 100,
-            y: 100,
-          ),
-          FeatureNode(
-            id: const Uuid().v4(),
-            name: 'Dashboard',
-            description: 'Main view with stats and quick actions',
-            layer: FeatureLayer.ui,
-            dependencyIds: const [],
-            x: 300,
-            y: 100,
-          ),
-        ];
-      } else {
-        final prompt =
-            '''
-You are a software architect. I am building a Flutter app named '${state.config.projectName}'.
-App description: '${state.config.description}'.
-${state.config.persona != null ? "Target persona: ${state.config.persona!.role} (Goal: ${state.config.persona!.goal})" : ""}
-
-Generate a list of exactly 4 to 8 core features required to build this app.
-Respond ONLY with a valid JSON array of objects.
-Each object must have exactly these keys:
-- "name": (string) A short name for the feature.
-- "description": (string) A brief description.
-- "layer": (string) One of 'ui', 'domain', 'data', or 'shared'.
-- "dependencies": (array of strings) The exact names of other features in this list that this feature depends on.
-''';
-
-        final content = [Content.text(prompt)];
-        String responseText = '[]';
-
-        try {
-          final model = GenerativeModel(
-            model: 'gemini-3.6-flash',
-            apiKey: apiKey,
-            generationConfig: GenerationConfig(
-              responseMimeType: 'application/json',
-            ),
-          );
-          final response = await model.generateContent(content);
-          responseText = response.text ?? '[]';
-        } catch (e1) {
-          if (e1.toString().contains('503') ||
-              e1.toString().contains('UNAVAILABLE')) {
-            throw Exception(
-              'The AI model is currently experiencing high demand. Please try again later.',
-            );
-          }
-          debugPrint('Falling back to gemini-3.1-pro due to: $e1');
-          try {
-            final fallbackModel = GenerativeModel(
-              model: 'gemini-3.1-pro',
-              apiKey: apiKey,
-              generationConfig: GenerationConfig(
-                responseMimeType: 'application/json',
-              ),
-            );
-            final response = await fallbackModel.generateContent(content);
-            responseText = response.text ?? '[]';
-          } catch (e2) {
-            if (e2.toString().contains('503') ||
-                e2.toString().contains('UNAVAILABLE')) {
-              throw Exception('Error on gemini-3.1-pro Error : $e2');
-            }
-            debugPrint('Both AI calls failed. e1: $e1 | e2: $e2');
-            throw Exception('Models failed. 3.6-flash: $e1\ngemini-3.1-pro: $e2');
-          }
-        }
-
-        if (generatedFeatures.isEmpty) {
-          String cleanJson = responseText.trim();
-          if (cleanJson.startsWith('```json')) {
-            cleanJson = cleanJson.substring(7);
-          } else if (cleanJson.startsWith('```')) {
-            cleanJson = cleanJson.substring(3);
-          }
-          if (cleanJson.endsWith('```')) {
-            cleanJson = cleanJson.substring(0, cleanJson.length - 3);
-          }
-          cleanJson = cleanJson.trim();
-
-          final List<dynamic> jsonList = jsonDecode(cleanJson);
-          final Map<String, String> nameToId = {};
-          final Map<String, List<String>> nameToDeps = {};
-
-          double currentX = 100;
-          double currentY = 100;
-
-          // First pass: generate IDs and map them
-          for (var item in jsonList) {
-            final name =
-                (item as Map<String, dynamic>)['name']?.toString() ??
-                'Unknown Feature';
-            nameToId[name] = const Uuid().v4();
-            nameToDeps[name] = List<String>.from(item['dependencies'] ?? []);
-          }
-
-          for (var i = 0; i < jsonList.length; i++) {
-            final item = jsonList[i] as Map<String, dynamic>;
-            final name = item['name']?.toString() ?? 'Unknown Feature';
-            final layerStr =
-                item['layer']?.toString().toLowerCase() ?? 'domain';
-            FeatureLayer layer;
-            switch (layerStr) {
-              case 'ui':
-                layer = FeatureLayer.ui;
-                break;
-              case 'data':
-                layer = FeatureLayer.data;
-                break;
-              case 'shared':
-                layer = FeatureLayer.shared;
-                break;
-              default:
-                layer = FeatureLayer.domain;
-            }
-
-            final depNames = nameToDeps[name] ?? [];
-            final depIds = depNames
-                .map((depName) => nameToId[depName])
-                .where((id) => id != null)
-                .cast<String>()
-                .toList();
-
-            generatedFeatures.add(
-              FeatureNode(
-                id: nameToId[name]!,
-                name: name,
-                description: item['description']?.toString() ?? '',
-                layer: layer,
-                dependencyIds: depIds,
-                x: currentX,
-                y: currentY,
-              ),
-            );
-
-            // Simple layout: increment Y for every feature, X alternates or wraps
-            currentY += 100;
-            if (currentY > 400) {
-              currentY = 100;
-              currentX += 250;
-            }
-          }
-        }
-      }
-
-      emit(
-        state.copyWith(
-          aiAnalysisStatus: AiAnalysisStatus.done,
-          config: state.config.copyWith(features: generatedFeatures),
-        ),
-      );
-    } catch (e) {
-      debugPrint('AI Analysis Error: $e');
-      emit(
-        state.copyWith(
-          aiAnalysisStatus: AiAnalysisStatus.failed,
-          aiAnalysisError: e.toString(),
-        ),
-      );
-    }
-  }
-
-  void retryAnalysis() {
-    emit(
-      state.copyWith(aiAnalysisStatus: AiAnalysisStatus.idle, clearError: true),
-    );
-    triggerBackgroundAnalysis();
-  }
 
   // ─── Navigation ───────────────────────────────────────────────────────────
 
@@ -329,7 +63,6 @@ Each object must have exactly these keys:
     if (idx < steps.length - 1) {
       emit(state.copyWith(currentStep: steps[idx + 1], clearError: true));
       if (steps[idx] == WizardStep.identity) {
-        triggerBackgroundAnalysis();
       }
     }
   }
@@ -346,7 +79,6 @@ Each object must have exactly these keys:
     emit(state.copyWith(currentStep: step, clearError: true));
     if (step == WizardStep.features &&
         state.aiAnalysisStatus == AiAnalysisStatus.idle) {
-      triggerBackgroundAnalysis();
     }
   }
 
@@ -371,6 +103,9 @@ Each object must have exactly these keys:
           geminiApiKey: geminiApiKey,
           inspiredBy: inspiredBy,
           persona: persona,
+          environment: team != null 
+              ? state.config.environment.copyWith(bundleIdBase: team)
+              : state.config.environment,
         ),
       ),
     );
@@ -526,27 +261,6 @@ Each object must have exactly these keys:
     return null;
   }
 
-  void addLlmInstruction(LlmInstruction instruction) {
-    emit(
-      state.copyWith(
-        config: state.config.copyWith(
-          llmInstructions: [...state.config.llmInstructions, instruction],
-        ),
-      ),
-    );
-  }
-
-  void removeLlmInstruction(String id) {
-    emit(
-      state.copyWith(
-        config: state.config.copyWith(
-          llmInstructions: state.config.llmInstructions
-              .where((i) => i.id != id)
-              .toList(),
-        ),
-      ),
-    );
-  }
 
   // ─── Step 3: Design + Assets ──────────────────────────────────────────────
 
@@ -720,17 +434,6 @@ Each object must have exactly these keys:
   // ─── Submit ───────────────────────────────────────────────────────────────
 
   Future<bool> submitProject() async {
-    if (!state.githubTokenSaved &&
-        (state.config.githubToken == null ||
-            state.config.githubToken!.isEmpty)) {
-      emit(
-        state.copyWith(
-          errorMessage:
-              'GitHub Token is required for the pipeline to push to your repository. Please go back to Step 1 and provide it.',
-        ),
-      );
-      return false;
-    }
     emit(state.copyWith(isSubmitting: true, clearError: true));
     try {
       final local = state.config;
@@ -740,23 +443,7 @@ Each object must have exactly these keys:
         description: local.description,
         team: local.team,
         platforms: local.platforms,
-        geminiApiKey: local.geminiApiKey,
-        inspiredBy: local.inspiredBy,
-        persona: local.persona != null
-            ? sp.UserPersona(
-                type: sp.UserPersonaType.values.firstWhere(
-                  (e) => e.name == local.persona!.type.name,
-                  orElse: () => sp.UserPersonaType.general,
-                ),
-                role: local.persona!.role,
-                goal: local.persona!.goal,
-                painPoints: local.persona!.painPoints,
-                needsScreenReader: local.persona!.needsScreenReader,
-                needsLargeText: local.persona!.needsLargeText,
-                needsHighContrast: local.persona!.needsHighContrast,
-                needsReducedMotion: local.persona!.needsReducedMotion,
-              )
-            : null,
+
         templateId: local.templateId,
         features: local.features
             .map(
@@ -802,42 +489,7 @@ Each object must have exactly these keys:
               ),
             )
             .toList(),
-        llmInstructions: local.llmInstructions
-            .map(
-              (i) => sp.LlmInstruction(
-                id: i.id,
-                instruction: i.instruction,
-                featureId: i.featureId,
-              ),
-            )
-            .toList(),
-        designSource: sp.DesignSource.values.firstWhere(
-          (e) => e.name == local.designSource.name,
-          orElse: () => sp.DesignSource.aiGenerated,
-        ),
-        aiDesignBrief: local.aiDesignBrief != null
-            ? sp.AiDesignBrief(
-                prompt: local.aiDesignBrief!.prompt,
-                stylePreference: local.aiDesignBrief!.stylePreference,
-                style: sp.AppStyle.values.firstWhere(
-                  (e) => e.name == local.aiDesignBrief!.style.name,
-                  orElse: () => sp.AppStyle.material3,
-                ),
-                primaryColor: local.aiDesignBrief!.primaryColor,
-                typography: sp.TypographyFeel.values.firstWhere(
-                  (e) => e.name == local.aiDesignBrief!.typography.name,
-                  orElse: () => sp.TypographyFeel.modern,
-                ),
-                colorMode: sp.ColorMode.values.firstWhere(
-                  (e) => e.name == local.aiDesignBrief!.colorMode.name,
-                  orElse: () => sp.ColorMode.system,
-                ),
-                density: sp.LayoutDensity.values.firstWhere(
-                  (e) => e.name == local.aiDesignBrief!.density.name,
-                  orElse: () => sp.LayoutDensity.comfortable,
-                ),
-              )
-            : null,
+
         figmaFileUrl: local.figmaFileUrl,
         figmaAccessToken: local.figmaAccessToken,
         appIcon: local.appIcon != null
@@ -934,22 +586,18 @@ Each object must have exactly these keys:
           deployToStores: local.ciCd.deployToStores,
           notifySlack: local.ciCd.notifySlack,
         ),
-        postmanCollection: local.postmanCollection != null
-            ? sp.PostmanConfig(
-                collectionVersion: local.postmanCollection!.version,
-                name: local.postmanCollection!.name,
-                folderCount: local.postmanCollection!.folders.length,
-              )
-            : null,
-        githubToken: local.githubToken,
+
       );
 
-      final generatedId = await client.project.submitConfig(spConfig);
-
-      // Update local state with the backend-generated ID
-      emit(
-        state.copyWith(config: state.config.copyWith(projectId: generatedId)),
-      );
+      if (state.isEditingExisting) {
+        await client.project.updateProjectConfig(state.config.projectId!, spConfig);
+      } else {
+        final generatedId = await client.project.submitConfig(spConfig);
+        // Update local state with the backend-generated ID
+        emit(
+          state.copyWith(config: state.config.copyWith(projectId: generatedId)),
+        );
+      }
       return true;
     } catch (e) {
       debugPrint('Error submitting project config to Serverpod: $e');
@@ -961,21 +609,4 @@ Each object must have exactly these keys:
   }
 
   Map<String, dynamic> get finalPayload => state.config.toJson();
-  Future<({List<String> questions, List<String> features})> analyzeRequirements(
-    String? apiKey,
-    Map<String, String>? answers,
-  ) async {
-    // Simulate AI analysis delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    // In a real implementation, this would use the Gemini API to analyze the prompt and answers
-    // and return dynamic questions and features.
-    return (
-      questions: [
-        'Do you need offline support?',
-        'Will there be user-generated content?',
-      ],
-      features: ['User Authentication', 'Profile Management', 'Cloud Sync'],
-    );
-  }
 }

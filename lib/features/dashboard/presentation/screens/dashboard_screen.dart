@@ -10,6 +10,7 @@ import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../../models/project_summary.dart';
 import '../widgets/template_selection_dialog.dart';
+import '../../../wizard/presentation/cubit/wizard_cubit.dart';
 
 
 class DashboardScreen extends StatefulWidget {
@@ -309,11 +310,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSettingsView() {
     return BlocBuilder<DashboardCubit, DashboardState>(
       builder: (context, state) {
-        String? apiKey;
-        if (state is DashboardLoaded) {
-          apiKey = state.globalApiKey;
-        }
-
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -331,51 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Gap(8),
                 Text('Configure default settings that apply to all new projects.', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
                 const Gap(48),
-                Text('AI Integration', style: AppTextStyles.h3),
-                const Gap(16),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Gemini API Key', style: AppTextStyles.label),
-                      const Gap(8),
-                      Text('This key will be used to automatically generate features and architecture for your new projects.', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
-                      const Gap(16),
-                      TextFormField(
-                        initialValue: apiKey,
-                        style: AppTextStyles.body.copyWith(color: AppColors.textPrimary),
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          hintText: 'Enter your Gemini API Key...',
-                          prefixIcon: const Icon(Icons.key, size: 18, color: AppColors.textMuted),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primary),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.surfaceElevated,
-                        ),
-                        onChanged: (val) {
-                          context.read<DashboardCubit>().updateApiKey(val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                Text('No global settings available at this time.', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -402,19 +354,22 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: ListTile(
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        selected: selected,
-        selectedTileColor: AppColors.primary.withValues(alpha: 0.12),
-        leading: Icon(icon,
-            size: 20,
-            color: selected ? AppColors.primary : AppColors.textMuted),
-        title: Text(label,
-            style: AppTextStyles.label.copyWith(
-                color: selected ? AppColors.primary : AppColors.textMuted)),
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          onTap: onTap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          selected: selected,
+          selectedTileColor: AppColors.primary.withValues(alpha: 0.12),
+          leading: Icon(icon,
+              size: 20,
+              color: selected ? AppColors.primary : AppColors.textMuted),
+          title: Text(label,
+              style: AppTextStyles.label.copyWith(
+                  color: selected ? AppColors.primary : AppColors.textMuted)),
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
       ),
     );
   }
@@ -551,12 +506,65 @@ class _ProjectCardState extends State<_ProjectCard> {
                     ),
                   ),
                   const Spacer(),
-                  Icon(
-                    Icons.arrow_forward,
-                    size: 16,
-                    color: _hovered
-                        ? AppColors.primary
-                        : AppColors.textMuted,
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: 20,
+                      color: _hovered ? AppColors.primary : AppColors.textMuted,
+                    ),
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        context.read<WizardCubit>().loadExistingProject(widget.project.config);
+                        context.go('/wizard');
+                      } else if (value == 'delete') {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: AppColors.card,
+                            title: Text('Delete Project', style: AppTextStyles.h2),
+                            content: Text('Are you sure you want to delete ${widget.project.name}? This action cannot be undone.', style: AppTextStyles.body),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: Text('Cancel', style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                child: Text('Delete', style: AppTextStyles.body.copyWith(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirm == true && context.mounted) {
+                          context.read<DashboardCubit>().deleteProject(widget.project.id);
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit, size: 16, color: AppColors.primary),
+                            const Gap(8),
+                            Text('Edit & Regenerate', style: AppTextStyles.body),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete, size: 16, color: AppColors.error),
+                            const Gap(8),
+                            Text('Delete', style: AppTextStyles.body.copyWith(color: AppColors.error)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

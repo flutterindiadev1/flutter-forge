@@ -1,0 +1,17 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'settings_state.dart';
+
+class SettingsCubit extends Cubit<SettingsState> {
+  SettingsCubit() : super(SettingsInitial());
+
+  Future<void> requestReview() async {
+    final InAppReview inAppReview = InAppReview.instance;
+    if (await inAppReview.isAvailable()) {
+      inAppReview.requestReview();
+    } else {
+      // Fallback: open store listing
+      inAppReview.openStoreListing();
+    }
+  }
+}

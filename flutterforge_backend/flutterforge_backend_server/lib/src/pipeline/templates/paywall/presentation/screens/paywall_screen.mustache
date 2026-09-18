@@ -1,0 +1,75 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubit/paywall_cubit.dart';
+import '../cubit/paywall_state.dart';
+import '../../../../core/di/injection.dart';
+
+class PaywallScreen extends StatelessWidget {
+  const PaywallScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<PaywallCubit>()..loadOfferings(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Upgrade to Premium'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: BlocConsumer<PaywallCubit, PaywallState>(
+          listener: (context, state) {
+            if (state is PaywallSuccess) {
+              Navigator.of(context).pop(true); // Return success
+            } else if (state is PaywallError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message)),
+              );
+            }
+          },
+          builder: (context, state) {
+            if (state is PaywallLoading || state is PaywallInitial) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state is PaywallLoaded) {
+              return Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text(
+                      'Unlock all premium features!',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: state.offerings.length,
+                      itemBuilder: (context, index) {
+                        final pkg = state.offerings[index];
+                        return ListTile(
+                          title: Text(pkg.title),
+                          subtitle: Text(pkg.description),
+                          trailing: Text(pkg.price),
+                          onTap: () => context.read<PaywallCubit>().purchase(pkg.rawPackage),
+                        );
+                      },
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.read<PaywallCubit>().restore(),
+                    child: const Text('Restore Purchases'),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              );
+            }
+            return const Center(child: Text('Failed to load subscriptions.'));
+          },
+        ),
+      ),
+    );
+  }
+}

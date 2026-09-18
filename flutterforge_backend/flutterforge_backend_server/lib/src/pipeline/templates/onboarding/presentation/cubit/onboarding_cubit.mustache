@@ -1,0 +1,23 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/usecases/check_onboarded_usecase.dart';
+import 'onboarding_state.dart';
+
+class OnboardingCubit extends Cubit<OnboardingState> {
+  final CheckOnboardedUseCase _checkOnboardedUseCase;
+
+  OnboardingCubit(this._checkOnboardedUseCase) : super(OnboardingInitial());
+
+  void checkStatus() {
+    final hasSeen = _checkOnboardedUseCase();
+    if (hasSeen) {
+      emit(OnboardingCompleted());
+    } else {
+      emit(OnboardingPending());
+    }
+  }
+
+  Future<void> complete() async {
+    await _checkOnboardedUseCase.completeOnboarding();
+    emit(OnboardingCompleted());
+  }
+}

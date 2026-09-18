@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
-import 'package:uuid/uuid.dart';
+
 import '../../../../app/theme/app_theme.dart';
 import '../../models/project_config.dart';
 import '../cubit/wizard_cubit.dart';
@@ -25,7 +25,6 @@ class _Step4ArchitectureState extends State<Step4Architecture> {
     'Localization',
     'Monetization',
     'Testing',
-    'Custom Reqs',
   ];
 
   @override
@@ -101,8 +100,6 @@ class _Step4ArchitectureState extends State<Step4Architecture> {
         return _MonetizationTab(config: config);
       case 5:
         return _TestingTab(config: config);
-      case 6:
-        return _CustomReqsTab(config: config);
       default:
         return const SizedBox();
     }
@@ -330,14 +327,7 @@ class _EnvironmentTab extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
         ),
-        const Gap(24),
-        WizardFieldLabel('Base Bundle ID (e.g. com.mycompany.app)'),
-        const Gap(8),
-        TextFormField(
-          initialValue: env.bundleIdBase,
-          onChanged: (v) => cubit.updateEnvironment(env.copyWith(bundleIdBase: v)),
-          decoration: const InputDecoration(hintText: 'com.example.app'),
-        ),
+
       ],
     );
   }
@@ -495,76 +485,6 @@ class _TestingTab extends StatelessWidget {
   }
 }
 
-// ─── 6. Custom Reqs ────────────────────────────────────────────────────────
-
-class _CustomReqsTab extends StatelessWidget {
-  final ProjectConfig config;
-  const _CustomReqsTab({required this.config});
-
-  @override
-  Widget build(BuildContext context) {
-    final globals = config.llmInstructions.where((i) => i.featureId == null).toList();
-    final cubit = context.read<WizardCubit>();
-    final ctrl = TextEditingController();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        WizardSectionHeader(
-          icon: Icons.psychology,
-          title: 'Global Custom Requirements',
-          subtitle: 'Add specific architectural or styling instructions for the LLM that apply across the entire app.',
-        ),
-        const Gap(32),
-        if (globals.isNotEmpty) ...[
-          ...globals.map((g) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Expanded(child: Text(g.instruction, style: AppTextStyles.body)),
-                IconButton(
-                  icon: const Icon(Icons.close, color: AppColors.error),
-                  onPressed: () => cubit.removeLlmInstruction(g.id),
-                ),
-              ],
-            ),
-          )),
-          const Gap(24),
-        ],
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: ctrl,
-                decoration: const InputDecoration(hintText: 'e.g. Always use EdgeInsets.all(16) for padding'),
-              ),
-            ),
-            const Gap(16),
-            ElevatedButton(
-              onPressed: () {
-                if (ctrl.text.trim().isNotEmpty) {
-                  cubit.addLlmInstruction(LlmInstruction(id: const Uuid().v4(), instruction: ctrl.text.trim()));
-                  ctrl.clear();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              ),
-              child: const Text('Add Rule', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
 
 // ─── Shared Components ─────────────────────────────────────────────────────
 

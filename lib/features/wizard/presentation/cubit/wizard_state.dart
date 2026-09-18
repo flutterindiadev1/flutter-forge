@@ -13,6 +13,7 @@ class WizardState extends Equatable {
   final String? aiAnalysisError;
   final bool apiKeySaved;
   final bool githubTokenSaved;
+  final bool isEditingExisting;
 
   const WizardState({
     this.currentStep = WizardStep.identity,
@@ -24,6 +25,7 @@ class WizardState extends Equatable {
     this.aiAnalysisError,
     this.apiKeySaved = false,
     this.githubTokenSaved = false,
+    this.isEditingExisting = false,
   });
 
   int get stepIndex => WizardStep.values.indexOf(currentStep);
@@ -40,6 +42,7 @@ class WizardState extends Equatable {
     String? aiAnalysisError,
     bool? apiKeySaved,
     bool? githubTokenSaved,
+    bool? isEditingExisting,
     bool clearError = false,
   }) {
     return WizardState(
@@ -53,6 +56,7 @@ class WizardState extends Equatable {
       aiAnalysisError: clearError ? null : (aiAnalysisError ?? this.aiAnalysisError),
       apiKeySaved: apiKeySaved ?? this.apiKeySaved,
       githubTokenSaved: githubTokenSaved ?? this.githubTokenSaved,
+      isEditingExisting: isEditingExisting ?? this.isEditingExisting,
     );
   }
 
@@ -67,5 +71,6 @@ class WizardState extends Equatable {
         aiAnalysisError,
         apiKeySaved,
         githubTokenSaved,
+        isEditingExisting,
       ];
 }

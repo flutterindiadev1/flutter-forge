@@ -1,0 +1,24 @@
+import '../../../../core/storage/local_storage.dart';
+
+abstract class OnboardingLocalDataSource {
+  Future<void> setHasSeenOnboarding(bool value);
+  bool getHasSeenOnboarding();
+}
+
+class OnboardingLocalDataSourceImpl implements OnboardingLocalDataSource {
+  final LocalStorage localStorage;
+
+  OnboardingLocalDataSourceImpl(this.localStorage);
+
+  static const _key = 'has_seen_onboarding';
+
+  @override
+  Future<void> setHasSeenOnboarding(bool value) async {
+    await localStorage.setBool(_key, value);
+  }
+
+  @override
+  bool getHasSeenOnboarding() {
+    return localStorage.getBool(_key) ?? false;
+  }
+}

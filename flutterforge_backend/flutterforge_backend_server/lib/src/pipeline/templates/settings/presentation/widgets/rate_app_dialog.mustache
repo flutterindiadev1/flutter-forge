@@ -1,0 +1,28 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../cubit/settings_cubit.dart';
+
+class RateAppDialog extends StatelessWidget {
+  const RateAppDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Enjoying the app?'),
+      content: const Text('Would you mind taking a moment to rate it? It helps us a lot!'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('No thanks'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            context.read<SettingsCubit>().requestReview();
+            Navigator.of(context).pop();
+          },
+          child: const Text('Rate App'),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,20 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/usecases/{{slug}}_usecase.dart';
+import '{{slug}}_event.dart';
+import '{{slug}}_state.dart';
+
+class {{className}}Bloc extends Bloc<{{className}}Event, {{className}}State> {
+  final {{className}}UseCase _usecase;
+
+  {{className}}Bloc(this._usecase) : super({{className}}Initial()) {
+    on<Load{{className}}>((event, emit) async {
+      emit({{className}}Loading());
+      try {
+        final result = await _usecase();
+        emit({{className}}Loaded(result));
+      } catch (e) {
+        emit({{className}}Error(e.toString()));
+      }
+    });
+  }
+}

@@ -9,24 +9,20 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
-ai:
-  - analyzeRequirements:
 pipeline:
   - startPipeline:
 project:
   - submitConfig:
   - listProjects:
   - getProject:
+  - updateProjectConfig:
+  - deleteProject:
   - listProjectFiles:
+  - deleteFile:
   - getFileContent:
   - saveFileContent:
-  - commitAndPush:
   - resolvePubDependency:
 user:
   - getSettings:
-  - saveApiKey:
-  - deleteApiKey:
-  - saveGithubToken:
-  - deleteGithubToken:
 greeting:
   - hello:

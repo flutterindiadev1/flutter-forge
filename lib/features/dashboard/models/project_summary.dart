@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../wizard/models/project_config.dart';
 
 enum ProjectStatus { draft, generating, ready, failed }
 
@@ -12,6 +13,7 @@ class ProjectSummary extends Equatable {
   final String architecture;
   final int featureCount;
   final DateTime lastUpdated;
+  final ProjectConfig config;
 
   const ProjectSummary({
     required this.id,
@@ -23,6 +25,7 @@ class ProjectSummary extends Equatable {
     required this.architecture,
     required this.featureCount,
     required this.lastUpdated,
+    required this.config,
   });
 
   @override

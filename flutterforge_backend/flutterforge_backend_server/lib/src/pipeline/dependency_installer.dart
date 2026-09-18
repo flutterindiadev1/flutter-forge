@@ -68,9 +68,16 @@ class DependencyInstaller {
     if (needsFirebaseCore) packages.add('firebase_core');
     
     if (intg.stripe) packages.add('flutter_stripe');
-    if (intg.revenueCat) packages.add('purchases_flutter');
+    if (intg.revenueCat || config.monetization?.provider?.name == 'revenueCat') packages.add('purchases_flutter');
     if (intg.googleMaps) packages.add('google_maps_flutter');
     if (intg.mapbox) packages.add('mapbox_maps_flutter');
+    
+    // Core and module specific packages
+    packages.add('internet_connection_checker');
+    
+    if (config.features.any((f) => f.name.toLowerCase() == 'settings')) {
+      packages.add('in_app_review');
+    }
     
     if (packages.isEmpty) {
       yield DependencyEvent(message: 'No dependencies to install.', progress: 1.0);
@@ -91,6 +98,8 @@ class DependencyInstaller {
         workingDirectory: projectDir.path,
       );
 
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+
       // Stream output
       double currentProgress = 0.1;
       await for (final line in process.stdout.transform(utf8.decoder).transform(const LineSplitter())) {
@@ -100,7 +109,7 @@ class DependencyInstaller {
 
       final exitCode = await process.exitCode;
       if (exitCode != 0) {
-        final stderrStr = await process.stderr.transform(utf8.decoder).join();
+        final stderrStr = await stderrFuture;
         yield DependencyEvent(
           message: 'Failed to add packages: $stderrStr',
           level: 'error',

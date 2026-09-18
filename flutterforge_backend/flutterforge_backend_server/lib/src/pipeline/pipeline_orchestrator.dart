@@ -3,9 +3,12 @@ import '../generated/protocol.dart';
 import 'environment_checker.dart';
 import 'scaffold_generator.dart';
 import 'dependency_installer.dart';
-import 'architecture_generator.dart';
-import 'feature_generator.dart';
-import 'github_pusher.dart';
+import 'core_generator.dart';
+import 'auth_generator.dart';
+import 'onboarding_generator.dart';
+import 'paywall_generator.dart';
+import 'settings_generator.dart';
+import 'feature_scaffolder.dart';
 import 'pubspec_patcher.dart';
 
 class PipelineOrchestrator {
@@ -55,7 +58,6 @@ class PipelineOrchestrator {
       addLog(msg, level: level);
     });
     
-    // We yield the state again so logs are pushed
     yield createState(PipelinePhase.parsing, 0.1);
 
     if (!envOk) {
@@ -85,10 +87,7 @@ class PipelineOrchestrator {
     if (!scaffoldOk) return;
 
     // Phase 1.5: Dependencies
-    yield createState(PipelinePhase.parsing, 1.0); // Parsing & Scaffold complete
-    
-    // Dependencies logically happen after scaffold but before structure gen,
-    // we'll run it here under structureGen phase initially.
+    yield createState(PipelinePhase.parsing, 1.0); 
     yield createState(PipelinePhase.structureGen, 0.0);
     
     final depInstaller = DependencyInstaller();
@@ -118,77 +117,68 @@ class PipelineOrchestrator {
       }
     }
 
-    // Phase 2: Architecture Structure
-    yield createState(PipelinePhase.structureGen, 0.0);
-    final archGenerator = ArchitectureGenerator();
-    bool archOk = false;
+    // Phase 2: Core Architecture
+    yield createState(PipelinePhase.structureGen, 0.2);
+    
 
-    await for (final event in archGenerator.generate(config)) {
+
+    // Run CoreGenerator
+    final coreGen = CoreGenerator();
+    bool coreOk = false;
+    await for (final event in coreGen.generate(config)) {
       addLog(event.message, level: event.level);
-      // We map the 0-1 progress of ArchitectureGenerator into the 0.2 - 1.0 range of this phase
       yield createState(PipelinePhase.structureGen, 0.2 + (event.progress * 0.8));
       if (event.isError) {
         yield createState(PipelinePhase.failed, 1.0, isComplete: true);
         return;
       }
-      if (event.progress >= 1.0) {
-        archOk = true;
-      }
+      if (event.progress >= 1.0) coreOk = true;
     }
+    if (!coreOk) return;
 
-    if (!archOk) return;
-
-    // Phase 3: Feature LLM Generation
-    yield createState(PipelinePhase.llmGen, 0.0);
-    final featureGenerator = FeatureGenerator();
-    bool featureOk = false;
-
-    await for (final event in featureGenerator.generate(config, commandIterator)) {
-      addLog(event.message, level: event.level);
-      
-      yield createState(
-        PipelinePhase.llmGen, 
-        event.progress,
-        isAwaitingElicitation: event.isAwaitingElicitation,
-        question: event.elicitationQuestion,
-        context: event.elicitationContext,
-      );
-      
-      if (event.isError) {
-        yield createState(PipelinePhase.failed, 1.0, isComplete: true);
-        return;
-      }
-      if (event.progress >= 1.0 && !event.isAwaitingElicitation) {
-        featureOk = true;
-      }
-    }
-
-    if (!featureOk) return;
+    // Phase 3: Module Generation
+    yield createState(PipelinePhase.structureGen, 0.0);
     
-    // Remaining mock phases for now
-    yield createState(PipelinePhase.astMerge, 0.0);
-    addLog('Validating and merging AST (mock)...');
-    await Future.delayed(const Duration(milliseconds: 800));
-    yield createState(PipelinePhase.astMerge, 1.0);
-
-    // Phase 5: GitHub Push
-    yield createState(PipelinePhase.astMerge, 0.0);
-    final githubPusher = GithubPusher();
-    bool githubOk = false;
-
-    await for (final event in githubPusher.push(config)) {
+    // Auth
+    final authGen = AuthGenerator();
+    await for (final event in authGen.generate(config)) {
       addLog(event.message, level: event.level);
-      yield createState(PipelinePhase.astMerge, event.progress);
-      if (event.isError) {
-        // Warning: GitHub push failing shouldn't fail the whole pipeline as they can still download ZIP.
-        // We just log it as an error and move on, but we don't abort generation.
-        addLog('GitHub push failed, but project is generated.', level: 'warning');
-        break;
-      }
-      if (event.progress >= 1.0) {
-        githubOk = true;
-      }
+      yield createState(PipelinePhase.structureGen, event.progress * 0.2);
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
     }
+    
+    // Onboarding
+    final onboardingGen = OnboardingGenerator();
+    await for (final event in onboardingGen.generate(config)) {
+      addLog(event.message, level: event.level);
+      yield createState(PipelinePhase.structureGen, 0.2 + (event.progress * 0.2));
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
+    }
+
+    // Paywall
+    final paywallGen = PaywallGenerator();
+    await for (final event in paywallGen.generate(config)) {
+      addLog(event.message, level: event.level);
+      yield createState(PipelinePhase.structureGen, 0.4 + (event.progress * 0.2));
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
+    }
+    
+    // Settings
+    final settingsGen = SettingsGenerator();
+    await for (final event in settingsGen.generate(config)) {
+      addLog(event.message, level: event.level);
+      yield createState(PipelinePhase.structureGen, 0.6 + (event.progress * 0.2));
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
+    }
+    
+    // Custom Features
+    final featureScaffolder = FeatureScaffolder();
+    await for (final event in featureScaffolder.generate(config)) {
+      addLog(event.message, level: event.level);
+      yield createState(PipelinePhase.structureGen, 0.8 + (event.progress * 0.2));
+      if (event.isError) { yield createState(PipelinePhase.failed, 1.0, isComplete: true); return; }
+    }
+
 
     addLog('Pipeline Complete!', level: 'success');
     yield createState(PipelinePhase.done, 1.0, isComplete: true, preview: 'lib/\n└── main.dart\n');

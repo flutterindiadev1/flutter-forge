@@ -1,9 +1,0 @@
-class: AiDesignBrief
-fields:
-  prompt: String
-  stylePreference: String
-  style: AppStyle
-  primaryColor: String
-  typography: TypographyFeel
-  colorMode: ColorMode
-  density: LayoutDensity

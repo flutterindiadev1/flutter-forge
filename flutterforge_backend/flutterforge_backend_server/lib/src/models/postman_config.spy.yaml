@@ -1,5 +1,0 @@
-class: PostmanConfig
-fields:
-  collectionVersion: String
-  name: String
-  folderCount: int

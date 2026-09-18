@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -21,10 +22,13 @@ class WorkspaceScreen extends StatefulWidget {
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   CodeController? _codeController;
   String? _currentFilePath;
+  Timer? _autoSaveTimer;
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
     _codeController?.dispose();
+
     super.dispose();
   }
 
@@ -37,6 +41,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
     _currentFilePath = filePath;
     _codeController?.dispose();
+    _autoSaveTimer?.cancel();
 
     var language = dart;
     if (filePath.endsWith('.yaml')) language = yaml;
@@ -45,9 +50,21 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     _codeController = CodeController(text: content, language: language);
 
     _codeController!.addListener(() {
-      context.read<WorkspaceCubit>().updateActiveFileContent(
-        _codeController!.text,
-      );
+      if (!mounted) return;
+
+      final cubit = context.read<WorkspaceCubit>();
+      cubit.updateActiveFileContent(_codeController!.text);
+
+      _autoSaveTimer?.cancel();
+      _autoSaveTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        final state = cubit.state;
+        if (state is WorkspaceLoaded &&
+            state.hasUnsavedChanges &&
+            !state.isSavingFile) {
+          cubit.saveFile();
+        }
+      });
     });
   }
 
@@ -93,16 +110,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Widget _buildSidebar(BuildContext context, WorkspaceLoaded state) {
-    return Container(
-      width: 260,
+    return Material(
       color: AppColors.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildHeader(context, state),
-          const Divider(height: 1),
-          Expanded(child: _buildFileExplorer(context, state)),
-        ],
+      child: SizedBox(
+        width: 260,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(context, state),
+            const Divider(height: 1),
+            Expanded(child: _buildFileExplorer(context, state)),
+          ],
+        ),
       ),
     );
   }
@@ -179,7 +198,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       return Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          initiallyExpanded: depth < 2,
+          initiallyExpanded: false,
           dense: true,
           visualDensity: const VisualDensity(vertical: -4),
           tilePadding: EdgeInsets.only(left: depth * 16.0 + 16.0, right: 16.0),

@@ -1,0 +1,65 @@
+import '../../domain/entities/user_entity.dart';
+{{#hasFirebase}}
+import 'package:firebase_auth/firebase_auth.dart';
+{{/hasFirebase}}
+
+abstract class AuthRemoteDataSource {
+  Future<UserEntity> signIn(String email, String password);
+  Future<void> signOut();
+  Future<UserEntity?> getCurrentUser();
+}
+
+class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
+  {{#hasFirebase}}
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  {{/hasFirebase}}
+
+  @override
+  Future<UserEntity> signIn(String email, String password) async {
+    {{#hasFirebase}}
+    final credential = await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    return UserEntity(
+      id: credential.user!.uid,
+      email: credential.user!.email!,
+      displayName: credential.user!.displayName,
+    );
+    {{/hasFirebase}}
+    {{^hasFirebase}}
+    // TODO: Implement non-Firebase sign in
+    await Future.delayed(const Duration(seconds: 1));
+    return UserEntity(id: 'mock_id', email: email);
+    {{/hasFirebase}}
+  }
+
+  @override
+  Future<void> signOut() async {
+    {{#hasFirebase}}
+    await _firebaseAuth.signOut();
+    {{/hasFirebase}}
+    {{^hasFirebase}}
+    // TODO: Implement non-Firebase sign out
+    {{/hasFirebase}}
+  }
+
+  @override
+  Future<UserEntity?> getCurrentUser() async {
+    {{#hasFirebase}}
+    final user = _firebaseAuth.currentUser;
+    if (user != null) {
+      return UserEntity(
+        id: user.uid,
+        email: user.email!,
+        displayName: user.displayName,
+      );
+    }
+    return null;
+    {{/hasFirebase}}
+    {{^hasFirebase}}
+    // TODO: Implement non-Firebase get current user
+    return null;
+    {{/hasFirebase}}
+  }
+}

@@ -1,0 +1,46 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../data/datasources/revenuecat_datasource.dart';
+import 'paywall_state.dart';
+
+class PaywallCubit extends Cubit<PaywallState> {
+  final RevenueCatDataSource _dataSource;
+
+  PaywallCubit(this._dataSource) : super(PaywallInitial());
+
+  Future<void> loadOfferings() async {
+    emit(PaywallLoading());
+    try {
+      final offerings = await _dataSource.getOfferings();
+      if (offerings.isEmpty) {
+        emit(PaywallError('No subscription plans available'));
+      } else {
+        emit(PaywallLoaded(offerings));
+      }
+    } catch (e) {
+      emit(PaywallError(e.toString()));
+    }
+  }
+
+  Future<void> purchase(Package package) async {
+    emit(PaywallLoading());
+    final success = await _dataSource.purchasePackage(package);
+    if (success) {
+      emit(PaywallSuccess());
+    } else {
+      emit(PaywallError('Purchase failed or cancelled'));
+      loadOfferings(); // Reload to show plans again
+    }
+  }
+
+  Future<void> restore() async {
+    emit(PaywallLoading());
+    final success = await _dataSource.restorePurchases();
+    if (success) {
+      emit(PaywallSuccess());
+    } else {
+      emit(PaywallError('No active subscriptions found to restore'));
+      loadOfferings();
+    }
+  }
+}

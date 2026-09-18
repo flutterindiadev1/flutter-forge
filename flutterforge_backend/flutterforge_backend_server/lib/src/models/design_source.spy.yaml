@@ -1,5 +1,0 @@
-enum: DesignSource
-values:
-  - aiGenerated
-  - figma
-  - skipped

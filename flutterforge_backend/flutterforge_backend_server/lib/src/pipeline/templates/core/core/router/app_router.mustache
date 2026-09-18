@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+{{#hasAuth}}
+import '../../features/auth/presentation/screens/login_screen.dart';
+{{/hasAuth}}
+{{#hasOnboarding}}
+import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+{{/hasOnboarding}}
+{{#hasPaywall}}
+import '../../features/paywall/presentation/screens/paywall_screen.dart';
+{{/hasPaywall}}
+{{#hasSettings}}
+import '../../features/settings/presentation/screens/settings_screen.dart';
+{{/hasSettings}}
+{{#features}}
+import '../../features/{{slug}}/presentation/screens/{{slug}}_screen.dart';
+{{/features}}
+
+final GoRouter appRouter = GoRouter(
+  initialLocation: '{{initialRoute}}',
+  routes: [
+    {{#hasOnboarding}}
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
+    ),
+    {{/hasOnboarding}}
+    {{#hasAuth}}
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    {{/hasAuth}}
+    {{#hasPaywall}}
+    GoRoute(
+      path: '/paywall',
+      builder: (context, state) => const PaywallScreen(),
+    ),
+    {{/hasPaywall}}
+    {{#hasSettings}}
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    {{/hasSettings}}
+    {{#features}}
+    GoRoute(
+      path: '/{{slug}}',
+      builder: (context, state) => const {{className}}Screen(),
+    ),
+    {{/features}}
+  ],
+);

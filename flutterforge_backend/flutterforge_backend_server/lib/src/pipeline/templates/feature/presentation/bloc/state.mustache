@@ -1,0 +1,14 @@
+import '../../domain/entities/{{slug}}_entity.dart';
+
+abstract class {{className}}State {}
+
+class {{className}}Initial extends {{className}}State {}
+class {{className}}Loading extends {{className}}State {}
+class {{className}}Loaded extends {{className}}State {
+  final {{className}}Entity data;
+  {{className}}Loaded(this.data);
+}
+class {{className}}Error extends {{className}}State {
+  final String message;
+  {{className}}Error(this.message);
+}

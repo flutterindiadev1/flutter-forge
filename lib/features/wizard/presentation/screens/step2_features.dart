@@ -97,40 +97,6 @@ class _Step2FeaturesState extends State<Step2Features>
                   ),
                 ),
               ),
-            // AI Analysis error warning
-            if (state.aiAnalysisStatus == AiAnalysisStatus.failed && state.aiAnalysisError != null)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: AppColors.error.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline,
-                          color: AppColors.error, size: 18),
-                      const Gap(10),
-                      Expanded(
-                        child: Text(
-                          state.aiAnalysisError!.replaceAll('Exception: ', ''),
-                          style: AppTextStyles.body.copyWith(
-                              color: AppColors.error),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.read<WizardCubit>().retryAnalysis(),
-                        child: const Text('Retry', style: TextStyle(color: AppColors.error)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            // Tab bar
             Padding(
               padding: const EdgeInsets.fromLTRB(40, 20, 40, 0),
               child: Container(
@@ -174,19 +140,7 @@ class _Step2FeaturesState extends State<Step2Features>
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: state.aiAnalysisStatus == AiAnalysisStatus.running
-                          ? const Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircularProgressIndicator(color: AppColors.primary),
-                                  Gap(16),
-                                  Text('AI is analyzing your requirements...',
-                                      style: TextStyle(color: AppColors.textMuted)),
-                                ],
-                              ),
-                            )
-                          : FeatureDependencyGraph(
+                          child: FeatureDependencyGraph(
                               nodes: state.config.features,
                               selectedNodeId: _selectedFeatureId,
                               onNodeTap: (id) =>
@@ -200,22 +154,7 @@ class _Step2FeaturesState extends State<Step2Features>
                   ListView(
                     padding: const EdgeInsets.fromLTRB(40, 0, 40, 20),
                     children: [
-                      if (state.aiAnalysisStatus == AiAnalysisStatus.running)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 60),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(color: AppColors.primary),
-                                Gap(16),
-                                Text('AI is generating your features...',
-                                    style: TextStyle(color: AppColors.textMuted)),
-                              ],
-                            ),
-                          ),
-                        )
-                      else if (state.config.features.isEmpty)
+                      if (state.config.features.isEmpty)
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.only(top: 60),
@@ -630,13 +569,7 @@ class _FeatureListItemState extends State<_FeatureListItem> {
               subtitle: 'Version: ${d.version}',
               onDelete: () => context.read<WizardCubit>().removeDependency(d.id),
             )),
-          if (instrs.isNotEmpty)
-            ...instrs.map((i) => _RequirementTile(
-              icon: Icons.psychology,
-              title: 'Instruction',
-              subtitle: i.instruction,
-              onDelete: () => context.read<WizardCubit>().removeLlmInstruction(i.id),
-            )),
+
           if (!hasAny)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -673,7 +606,7 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                     labelText: 'Type',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  items: ['Dependency', 'Custom Painter', 'Native Module', 'LLM Instruction']
+                  items: ['Dependency', 'Custom Painter', 'Native Module']
                       .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (val) {
                     if (val != null) {
@@ -682,7 +615,6 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                   },
                 ),
                 const Gap(16),
-                if (type != 'LLM Instruction')
                   TextField(
                     controller: nameCtrl,
                     decoration: InputDecoration(
@@ -690,12 +622,12 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
-                if (type != 'LLM Instruction') const Gap(16),
+                const Gap(16),
                 TextField(
                   controller: descCtrl,
-                  maxLines: type == 'LLM Instruction' ? 4 : 2,
+                  maxLines: 2,
                   decoration: InputDecoration(
-                    labelText: type == 'Dependency' ? 'Version (optional)' : (type == 'LLM Instruction' ? 'Instruction prompt' : 'Description'),
+                    labelText: type == 'Dependency' ? 'Version (optional)' : 'Description',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
@@ -757,12 +689,6 @@ class _FeatureListItemState extends State<_FeatureListItem> {
                     moduleName: nameCtrl.text.trim(),
                     platforms: [platform],
                     description: descCtrl.text.trim(),
-                    featureId: featureId,
-                  ));
-                } else if (type == 'LLM Instruction') {
-                  cubit.addLlmInstruction(LlmInstruction(
-                    id: const Uuid().v4(),
-                    instruction: descCtrl.text.trim(),
                     featureId: featureId,
                   ));
                 }

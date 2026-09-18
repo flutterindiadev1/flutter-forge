@@ -209,8 +209,6 @@ class _PipelineScreenState extends State<PipelineScreen>
       (PipelinePhase.parsing, 'Parsing', Icons.document_scanner_outlined),
       (PipelinePhase.structureGen, 'Structure Gen', Icons.folder_outlined),
       (PipelinePhase.elicitation, 'Elicitation', Icons.record_voice_over_outlined),
-      (PipelinePhase.llmGen, 'LLM Generation', Icons.smart_toy_outlined),
-      (PipelinePhase.astMerge, 'AST Merge', Icons.merge_type),
     ];
 
     return Container(
@@ -298,8 +296,6 @@ class _PipelineScreenState extends State<PipelineScreen>
       case PipelinePhase.parsing: return 'Parsing files...';
       case PipelinePhase.structureGen: return 'Generating structure...';
       case PipelinePhase.elicitation: return 'Awaiting your input...';
-      case PipelinePhase.llmGen: return 'LLM generating code...';
-      case PipelinePhase.astMerge: return 'Merging & validating...';
       case PipelinePhase.done: return 'Complete!';
       case PipelinePhase.failed: return 'Failed';
     }

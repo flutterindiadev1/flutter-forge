@@ -1,0 +1,26 @@
+import '../../domain/entities/{{slug}}_entity.dart';
+{{#hasNetwork}}
+import '../../../../core/network/api_client.dart';
+{{/hasNetwork}}
+
+abstract class {{className}}RemoteDataSource {
+  Future<{{className}}Entity> get();
+}
+
+class {{className}}RemoteDataSourceImpl implements {{className}}RemoteDataSource {
+  {{#hasNetwork}}
+  final ApiClient apiClient;
+
+  {{className}}RemoteDataSourceImpl(this.apiClient);
+  {{/hasNetwork}}
+  {{^hasNetwork}}
+  {{className}}RemoteDataSourceImpl();
+  {{/hasNetwork}}
+
+  @override
+  Future<{{className}}Entity> get() async {
+    // TODO: Implement actual remote fetch
+    await Future.delayed(const Duration(seconds: 1));
+    return {{className}}Entity(id: 'mock_id');
+  }
+}

@@ -1,0 +1,15 @@
+import '../../data/datasources/onboarding_local_datasource.dart';
+
+class CheckOnboardedUseCase {
+  final OnboardingLocalDataSource localDataSource;
+
+  CheckOnboardedUseCase(this.localDataSource);
+
+  bool call() {
+    return localDataSource.getHasSeenOnboarding();
+  }
+
+  Future<void> completeOnboarding() async {
+    await localDataSource.setHasSeenOnboarding(true);
+  }
+}

@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'feature_node.dart';
 
 // --- Enums ---
-enum WizardStep { identity, features, design, architecture, postman }
+enum WizardStep { identity, features, architecture }
 
 enum DesignSource { aiGenerated, figma, skipped }
 

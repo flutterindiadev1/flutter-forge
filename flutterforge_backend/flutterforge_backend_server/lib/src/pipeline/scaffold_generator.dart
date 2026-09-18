@@ -57,6 +57,8 @@ class ScaffoldGenerator {
         workingDirectory: projectDir.path,
       );
 
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+
       // We will stream process output using await for on process.stdout
       
       double currentProgress = 0.2;
@@ -67,7 +69,7 @@ class ScaffoldGenerator {
 
       final exitCode = await process.exitCode;
       if (exitCode != 0) {
-        final stderrStr = await process.stderr.transform(utf8.decoder).join();
+        final stderrStr = await stderrFuture;
         yield ScaffoldEvent(
           message: 'Flutter create failed: $stderrStr',
           level: 'error',
@@ -76,6 +78,7 @@ class ScaffoldGenerator {
         );
         return;
       }
+
       
       yield ScaffoldEvent(
         message: 'Scaffold generated successfully in $projectDir',

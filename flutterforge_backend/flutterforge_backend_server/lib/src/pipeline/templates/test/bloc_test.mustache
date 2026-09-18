@@ -1,0 +1,58 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:bloc_test/bloc_test.dart';
+import 'package:mocktail/mocktail.dart';
+import '../../lib/features/{{slug}}/presentation/bloc/{{slug}}_bloc.dart';
+import '../../lib/features/{{slug}}/presentation/bloc/{{slug}}_event.dart';
+import '../../lib/features/{{slug}}/presentation/bloc/{{slug}}_state.dart';
+import '../../lib/features/{{slug}}/domain/usecases/get_{{slug}}_usecase.dart';
+import '../../lib/features/{{slug}}/domain/entities/{{slug}}_entity.dart';
+
+class MockGet{{className}}UseCase extends Mock implements Get{{className}}UseCase {}
+
+void main() {
+  late MockGet{{className}}UseCase mockGetUseCase;
+  late {{className}}Bloc bloc;
+
+  setUp(() {
+    mockGetUseCase = MockGet{{className}}UseCase();
+    bloc = {{className}}Bloc(mockGetUseCase);
+  });
+
+  tearDown(() {
+    bloc.close();
+  });
+
+  group('{{className}}Bloc', () {
+    final mockEntity = {{className}}Entity(id: '1');
+
+    test('initial state is {{className}}Initial', () {
+      expect(bloc.state, isA<{{className}}Initial>());
+    });
+
+    blocTest<{{className}}Bloc, {{className}}State>(
+      'emits [{{className}}Loading, {{className}}Loaded] when Load{{className}} is added and usecase succeeds',
+      build: () {
+        when(() => mockGetUseCase.call()).thenAnswer((_) async => mockEntity);
+        return bloc;
+      },
+      act: (bloc) => bloc.add(Load{{className}}()),
+      expect: () => [
+        isA<{{className}}Loading>(),
+        isA<{{className}}Loaded>(),
+      ],
+    );
+
+    blocTest<{{className}}Bloc, {{className}}State>(
+      'emits [{{className}}Loading, {{className}}Error] when Load{{className}} is added and usecase fails',
+      build: () {
+        when(() => mockGetUseCase.call()).thenThrow(Exception('Failed'));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(Load{{className}}()),
+      expect: () => [
+        isA<{{className}}Loading>(),
+        isA<{{className}}Error>(),
+      ],
+    );
+  });
+}

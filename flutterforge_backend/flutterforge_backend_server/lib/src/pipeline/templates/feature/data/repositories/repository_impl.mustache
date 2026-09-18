@@ -1,0 +1,14 @@
+import '../../domain/entities/{{slug}}_entity.dart';
+import '../../domain/repositories/{{slug}}_repository.dart';
+import '../datasources/{{slug}}_remote_datasource.dart';
+
+class {{className}}RepositoryImpl implements {{className}}Repository {
+  final {{className}}RemoteDataSource remoteDataSource;
+
+  {{className}}RepositoryImpl(this.remoteDataSource);
+
+  @override
+  Future<{{className}}Entity> get() {
+    return remoteDataSource.get();
+  }
+}

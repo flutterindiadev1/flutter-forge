@@ -5,15 +5,16 @@ import 'dashboard_state.dart';
 import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 
+import '../../../wizard/models/project_config_parsers.dart';
+
 class DashboardCubit extends Cubit<DashboardState> {
   DashboardCubit() : super(const DashboardLoading()) {
     _loadProjects();
   }
 
-  Future<void> _loadProjects({String? currentKey}) async {
+  Future<void> _loadProjects() async {
     try {
       final settings = await client.user.getSettings();
-      currentKey = settings.geminiApiKey ?? currentKey;
     } catch (e) {
       debugPrint('Could not load user settings: $e');
     }
@@ -30,6 +31,8 @@ class DashboardCubit extends Cubit<DashboardState> {
         final platforms = (configMap['platforms'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
         final arch = (configMap['architecture'] as Map<String, dynamic>?)?['pattern'] as String? ?? '';
         final featuresCount = (configMap['features'] as List<dynamic>?)?.length ?? 0;
+        
+        final config = parseProjectConfig(configMap);
         
         ProjectStatus status;
         switch (record.status) {
@@ -55,25 +58,33 @@ class DashboardCubit extends Cubit<DashboardState> {
           architecture: arch,
           featureCount: featuresCount,
           lastUpdated: record.createdAt,
+          config: config,
         );
       }).toList();
     } catch (e) {
-      debugPrint('Failed to load projects: $e');
+      debugPrint('Could not load projects: $e');
     }
 
-    emit(DashboardLoaded(summaries, globalApiKey: currentKey));
+    emit(DashboardLoaded(summaries));
+  }
+
+  Future<void> deleteProject(String projectId) async {
+    try {
+      await client.project.deleteProject(projectId);
+      if (state is DashboardLoaded) {
+        final currentProjects = (state as DashboardLoaded).projects;
+        final updatedProjects = currentProjects.where((p) => p.id != projectId).toList();
+        emit(DashboardLoaded(updatedProjects));
+      }
+    } catch (e) {
+      debugPrint('Failed to delete project: $e');
+      // Could emit an error state here, but for now just reload
+      _loadProjects();
+    }
   }
 
   Future<void> refresh() async {
-    final currentKey = state is DashboardLoaded ? (state as DashboardLoaded).globalApiKey : null;
     emit(const DashboardLoading());
-    await _loadProjects(currentKey: currentKey);
-  }
-
-  void updateApiKey(String apiKey) {
-    if (state is DashboardLoaded) {
-      final loadedState = state as DashboardLoaded;
-      emit(loadedState.copyWith(globalApiKey: apiKey));
-    }
+    await _loadProjects();
   }
 }

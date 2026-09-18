@@ -18,23 +18,17 @@ abstract class UserSettings
   UserSettings._({
     this.id,
     required this.userInfoId,
-    this.geminiApiKey,
-    this.githubToken,
   });
 
   factory UserSettings({
     int? id,
     required String userInfoId,
-    String? geminiApiKey,
-    String? githubToken,
   }) = _UserSettingsImpl;
 
   factory UserSettings.fromJson(Map<String, dynamic> jsonSerialization) {
     return UserSettings(
       id: jsonSerialization['id'] as int?,
       userInfoId: jsonSerialization['userInfoId'] as String,
-      geminiApiKey: jsonSerialization['geminiApiKey'] as String?,
-      githubToken: jsonSerialization['githubToken'] as String?,
     );
   }
 
@@ -47,10 +41,6 @@ abstract class UserSettings
 
   String userInfoId;
 
-  String? geminiApiKey;
-
-  String? githubToken;
-
   @override
   _i1.Table<int?> get table => t;
 
@@ -60,8 +50,6 @@ abstract class UserSettings
   UserSettings copyWith({
     int? id,
     String? userInfoId,
-    String? geminiApiKey,
-    String? githubToken,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -69,8 +57,6 @@ abstract class UserSettings
       '__className__': 'UserSettings',
       if (id != null) 'id': id,
       'userInfoId': userInfoId,
-      if (geminiApiKey != null) 'geminiApiKey': geminiApiKey,
-      if (githubToken != null) 'githubToken': githubToken,
     };
   }
 
@@ -80,8 +66,6 @@ abstract class UserSettings
       '__className__': 'UserSettings',
       if (id != null) 'id': id,
       'userInfoId': userInfoId,
-      if (geminiApiKey != null) 'geminiApiKey': geminiApiKey,
-      if (githubToken != null) 'githubToken': githubToken,
     };
   }
 
@@ -121,13 +105,9 @@ class _UserSettingsImpl extends UserSettings {
   _UserSettingsImpl({
     int? id,
     required String userInfoId,
-    String? geminiApiKey,
-    String? githubToken,
   }) : super._(
          id: id,
          userInfoId: userInfoId,
-         geminiApiKey: geminiApiKey,
-         githubToken: githubToken,
        );
 
   /// Returns a shallow copy of this [UserSettings]
@@ -137,14 +117,10 @@ class _UserSettingsImpl extends UserSettings {
   UserSettings copyWith({
     Object? id = _Undefined,
     String? userInfoId,
-    Object? geminiApiKey = _Undefined,
-    Object? githubToken = _Undefined,
   }) {
     return UserSettings(
       id: id is int? ? id : this.id,
       userInfoId: userInfoId ?? this.userInfoId,
-      geminiApiKey: geminiApiKey is String? ? geminiApiKey : this.geminiApiKey,
-      githubToken: githubToken is String? ? githubToken : this.githubToken,
     );
   }
 }
@@ -156,17 +132,6 @@ class UserSettingsUpdateTable extends _i1.UpdateTable<UserSettingsTable> {
     table.userInfoId,
     value,
   );
-
-  _i1.ColumnValue<String, String> geminiApiKey(String? value) =>
-      _i1.ColumnValue(
-        table.geminiApiKey,
-        value,
-      );
-
-  _i1.ColumnValue<String, String> githubToken(String? value) => _i1.ColumnValue(
-    table.githubToken,
-    value,
-  );
 }
 
 class UserSettingsTable extends _i1.Table<int?> {
@@ -176,30 +141,16 @@ class UserSettingsTable extends _i1.Table<int?> {
       'userInfoId',
       this,
     );
-    geminiApiKey = _i1.ColumnString(
-      'geminiApiKey',
-      this,
-    );
-    githubToken = _i1.ColumnString(
-      'githubToken',
-      this,
-    );
   }
 
   late final UserSettingsUpdateTable updateTable;
 
   late final _i1.ColumnString userInfoId;
 
-  late final _i1.ColumnString geminiApiKey;
-
-  late final _i1.ColumnString githubToken;
-
   @override
   List<_i1.Column> get columns => [
     id,
     userInfoId,
-    geminiApiKey,
-    githubToken,
   ];
 }
 

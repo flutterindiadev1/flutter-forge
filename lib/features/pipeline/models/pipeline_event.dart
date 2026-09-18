@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum PipelinePhase { parsing, structureGen, elicitation, llmGen, astMerge, done, failed }
+enum PipelinePhase { parsing, structureGen, elicitation, done, failed }
 
 class PipelineEvent extends Equatable {
   final String message;

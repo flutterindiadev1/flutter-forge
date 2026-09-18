@@ -10,27 +10,21 @@ import '../cubit/wizard_cubit.dart';
 import '../cubit/wizard_state.dart';
 import 'step1_identity.dart';
 import 'step2_features.dart';
-import 'step3_design.dart';
 import 'step4_architecture.dart';
-import 'step5_postman.dart';
 
 class WizardShell extends StatelessWidget {
   const WizardShell({super.key});
 
-  static const _stepLabels = [
-    'Project Identity',
-    'App Features',
-    'Design & Assets',
+  static const List<String> _stepLabels = [
+    'Identity',
+    'Features',
     'Architecture',
-    'API (Optional)',
   ];
 
   static const _stepDescriptions = [
     'Name and describe your project',
     'Define features and requirements',
-    'Upload assets and choose design',
     'Choose your tech stack',
-    'Upload Postman collection',
   ];
 
   @override
@@ -284,12 +278,8 @@ class WizardShell extends StatelessWidget {
         return const Step1Identity(key: ValueKey('step1'));
       case WizardStep.features:
         return const Step2Features(key: ValueKey('step2'));
-      case WizardStep.design:
-        return const Step3Design(key: ValueKey('step3'));
       case WizardStep.architecture:
         return const Step4Architecture(key: ValueKey('step4'));
-      case WizardStep.postman:
-        return const Step5Postman(key: ValueKey('step5'));
     }
   }
 

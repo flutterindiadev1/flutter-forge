@@ -14,20 +14,19 @@
 import 'package:serverpod/serverpod.dart' as _i1;
 import '../auth/email_idp_endpoint.dart' as _i2;
 import '../auth/jwt_refresh_endpoint.dart' as _i3;
-import '../endpoints/ai_endpoint.dart' as _i4;
-import '../endpoints/pipeline_endpoint.dart' as _i5;
-import '../endpoints/project_endpoint.dart' as _i6;
-import '../endpoints/user_endpoint.dart' as _i7;
-import '../greetings/greeting_endpoint.dart' as _i8;
+import '../endpoints/pipeline_endpoint.dart' as _i4;
+import '../endpoints/project_endpoint.dart' as _i5;
+import '../endpoints/user_endpoint.dart' as _i6;
+import '../greetings/greeting_endpoint.dart' as _i7;
 import 'package:flutterforge_backend_server/src/generated/pipeline_command.dart'
-    as _i9;
+    as _i8;
 import 'package:flutterforge_backend_server/src/generated/project_config.dart'
-    as _i10;
+    as _i9;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
-    as _i11;
-import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i12;
+    as _i10;
+import 'package:serverpod_auth_server/serverpod_auth_server.dart' as _i11;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
-    as _i13;
+    as _i12;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
@@ -45,31 +44,25 @@ class Endpoints extends _i1.EndpointDispatch {
           'jwtRefresh',
           null,
         ),
-      'ai': _i4.AiEndpoint()
-        ..initialize(
-          server,
-          'ai',
-          null,
-        ),
-      'pipeline': _i5.PipelineEndpoint()
+      'pipeline': _i4.PipelineEndpoint()
         ..initialize(
           server,
           'pipeline',
           null,
         ),
-      'project': _i6.ProjectEndpoint()
+      'project': _i5.ProjectEndpoint()
         ..initialize(
           server,
           'project',
           null,
         ),
-      'user': _i7.UserEndpoint()
+      'user': _i6.UserEndpoint()
         ..initialize(
           server,
           'user',
           null,
         ),
-      'greeting': _i8.GreetingEndpoint()
+      'greeting': _i7.GreetingEndpoint()
         ..initialize(
           server,
           'greeting',
@@ -280,43 +273,6 @@ class Endpoints extends _i1.EndpointDispatch {
         ),
       },
     );
-    connectors['ai'] = _i1.EndpointConnector(
-      name: 'ai',
-      endpoint: endpoints['ai']!,
-      methodConnectors: {
-        'analyzeRequirements': _i1.MethodConnector(
-          name: 'analyzeRequirements',
-          params: {
-            'apiKey': _i1.ParameterDescription(
-              name: 'apiKey',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-            'description': _i1.ParameterDescription(
-              name: 'description',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-            'answers': _i1.ParameterDescription(
-              name: 'answers',
-              type: _i1.getType<Map<String, String>?>(),
-              nullable: true,
-            ),
-          },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['ai'] as _i4.AiEndpoint).analyzeRequirements(
-                    session,
-                    params['apiKey'],
-                    params['description'],
-                    params['answers'],
-                  ),
-        ),
-      },
-    );
     connectors['pipeline'] = _i1.EndpointConnector(
       name: 'pipeline',
       endpoint: endpoints['pipeline']!,
@@ -326,7 +282,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {},
           streamParams: {
             'commandStream':
-                _i1.StreamParameterDescription<_i9.PipelineCommand>(
+                _i1.StreamParameterDescription<_i8.PipelineCommand>(
                   name: 'commandStream',
                   nullable: false,
                 ),
@@ -338,9 +294,9 @@ class Endpoints extends _i1.EndpointDispatch {
                 Map<String, dynamic> params,
                 Map<String, Stream> streamParams,
               ) =>
-                  (endpoints['pipeline'] as _i5.PipelineEndpoint).startPipeline(
+                  (endpoints['pipeline'] as _i4.PipelineEndpoint).startPipeline(
                     session,
-                    streamParams['commandStream']!.cast<_i9.PipelineCommand>(),
+                    streamParams['commandStream']!.cast<_i8.PipelineCommand>(),
                   ),
         ),
       },
@@ -354,7 +310,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'config': _i1.ParameterDescription(
               name: 'config',
-              type: _i1.getType<_i10.ProjectConfig>(),
+              type: _i1.getType<_i9.ProjectConfig>(),
               nullable: false,
             ),
           },
@@ -363,7 +319,7 @@ class Endpoints extends _i1.EndpointDispatch {
                 _i1.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['project'] as _i6.ProjectEndpoint).submitConfig(
+                  (endpoints['project'] as _i5.ProjectEndpoint).submitConfig(
                     session,
                     params['config'],
                   ),
@@ -375,7 +331,7 @@ class Endpoints extends _i1.EndpointDispatch {
               (
                 _i1.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['project'] as _i6.ProjectEndpoint)
+              ) async => (endpoints['project'] as _i5.ProjectEndpoint)
                   .listProjects(session),
         ),
         'getProject': _i1.MethodConnector(
@@ -392,7 +348,51 @@ class Endpoints extends _i1.EndpointDispatch {
                 _i1.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['project'] as _i6.ProjectEndpoint).getProject(
+                  (endpoints['project'] as _i5.ProjectEndpoint).getProject(
+                    session,
+                    params['projectId'],
+                  ),
+        ),
+        'updateProjectConfig': _i1.MethodConnector(
+          name: 'updateProjectConfig',
+          params: {
+            'projectId': _i1.ParameterDescription(
+              name: 'projectId',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+            'config': _i1.ParameterDescription(
+              name: 'config',
+              type: _i1.getType<_i9.ProjectConfig>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['project'] as _i5.ProjectEndpoint)
+                  .updateProjectConfig(
+                    session,
+                    params['projectId'],
+                    params['config'],
+                  ),
+        ),
+        'deleteProject': _i1.MethodConnector(
+          name: 'deleteProject',
+          params: {
+            'projectId': _i1.ParameterDescription(
+              name: 'projectId',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['project'] as _i5.ProjectEndpoint).deleteProject(
                     session,
                     params['projectId'],
                   ),
@@ -410,10 +410,35 @@ class Endpoints extends _i1.EndpointDispatch {
               (
                 _i1.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['project'] as _i6.ProjectEndpoint)
+              ) async => (endpoints['project'] as _i5.ProjectEndpoint)
                   .listProjectFiles(
                     session,
                     params['projectId'],
+                  ),
+        ),
+        'deleteFile': _i1.MethodConnector(
+          name: 'deleteFile',
+          params: {
+            'projectId': _i1.ParameterDescription(
+              name: 'projectId',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+            'filePath': _i1.ParameterDescription(
+              name: 'filePath',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['project'] as _i5.ProjectEndpoint).deleteFile(
+                    session,
+                    params['projectId'],
+                    params['filePath'],
                   ),
         ),
         'getFileContent': _i1.MethodConnector(
@@ -435,7 +460,7 @@ class Endpoints extends _i1.EndpointDispatch {
                 _i1.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['project'] as _i6.ProjectEndpoint).getFileContent(
+                  (endpoints['project'] as _i5.ProjectEndpoint).getFileContent(
                     session,
                     params['projectId'],
                     params['filePath'],
@@ -465,36 +490,11 @@ class Endpoints extends _i1.EndpointDispatch {
                 _i1.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['project'] as _i6.ProjectEndpoint).saveFileContent(
+                  (endpoints['project'] as _i5.ProjectEndpoint).saveFileContent(
                     session,
                     params['projectId'],
                     params['filePath'],
                     params['content'],
-                  ),
-        ),
-        'commitAndPush': _i1.MethodConnector(
-          name: 'commitAndPush',
-          params: {
-            'projectId': _i1.ParameterDescription(
-              name: 'projectId',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-            'commitMessage': _i1.ParameterDescription(
-              name: 'commitMessage',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['project'] as _i6.ProjectEndpoint).commitAndPush(
-                    session,
-                    params['projectId'],
-                    params['commitMessage'],
                   ),
         ),
         'resolvePubDependency': _i1.MethodConnector(
@@ -510,7 +510,7 @@ class Endpoints extends _i1.EndpointDispatch {
               (
                 _i1.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['project'] as _i6.ProjectEndpoint)
+              ) async => (endpoints['project'] as _i5.ProjectEndpoint)
                   .resolvePubDependency(
                     session,
                     params['url'],
@@ -530,64 +530,7 @@ class Endpoints extends _i1.EndpointDispatch {
                 _i1.Session session,
                 Map<String, dynamic> params,
               ) async =>
-                  (endpoints['user'] as _i7.UserEndpoint).getSettings(session),
-        ),
-        'saveApiKey': _i1.MethodConnector(
-          name: 'saveApiKey',
-          params: {
-            'key': _i1.ParameterDescription(
-              name: 'key',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['user'] as _i7.UserEndpoint).saveApiKey(
-                session,
-                params['key'],
-              ),
-        ),
-        'deleteApiKey': _i1.MethodConnector(
-          name: 'deleteApiKey',
-          params: {},
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['user'] as _i7.UserEndpoint).deleteApiKey(session),
-        ),
-        'saveGithubToken': _i1.MethodConnector(
-          name: 'saveGithubToken',
-          params: {
-            'key': _i1.ParameterDescription(
-              name: 'key',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['user'] as _i7.UserEndpoint).saveGithubToken(
-                    session,
-                    params['key'],
-                  ),
-        ),
-        'deleteGithubToken': _i1.MethodConnector(
-          name: 'deleteGithubToken',
-          params: {},
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['user'] as _i7.UserEndpoint)
-                  .deleteGithubToken(session),
+                  (endpoints['user'] as _i6.UserEndpoint).getSettings(session),
         ),
       },
     );
@@ -608,17 +551,17 @@ class Endpoints extends _i1.EndpointDispatch {
               (
                 _i1.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['greeting'] as _i8.GreetingEndpoint).hello(
+              ) async => (endpoints['greeting'] as _i7.GreetingEndpoint).hello(
                 session,
                 params['name'],
               ),
         ),
       },
     );
-    modules['serverpod_auth_idp'] = _i11.Endpoints()
+    modules['serverpod_auth_idp'] = _i10.Endpoints()
       ..initializeEndpoints(server);
-    modules['serverpod_auth'] = _i12.Endpoints()..initializeEndpoints(server);
-    modules['serverpod_auth_core'] = _i13.Endpoints()
+    modules['serverpod_auth'] = _i11.Endpoints()..initializeEndpoints(server);
+    modules['serverpod_auth_core'] = _i12.Endpoints()
       ..initializeEndpoints(server);
   }
 }

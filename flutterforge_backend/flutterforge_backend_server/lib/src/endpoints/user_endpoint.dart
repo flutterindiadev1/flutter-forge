@@ -24,27 +24,4 @@ class UserEndpoint extends Endpoint {
     return settings;
   }
 
-  Future<void> saveApiKey(Session session, String key) async {
-    final settings = await getSettings(session);
-    settings.geminiApiKey = key;
-    await UserSettings.db.updateRow(session, settings);
-  }
-
-  Future<void> deleteApiKey(Session session) async {
-    final settings = await getSettings(session);
-    settings.geminiApiKey = null;
-    await UserSettings.db.updateRow(session, settings);
-  }
-
-  Future<void> saveGithubToken(Session session, String key) async {
-    final settings = await getSettings(session);
-    settings.githubToken = key;
-    await UserSettings.db.updateRow(session, settings);
-  }
-
-  Future<void> deleteGithubToken(Session session) async {
-    final settings = await getSettings(session);
-    settings.githubToken = null;
-    await UserSettings.db.updateRow(session, settings);
-  }
 }
